@@ -1,0 +1,331 @@
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2050_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  DATA: lv_ponum TYPE zspb5014-ponum.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'SEARCH'.
+      PERFORM process_search_0100.
+
+    WHEN 'CREATE'.
+      PERFORM process_create_0100.
+
+      CALL SCREEN 0200.
+
+
+    WHEN 'DETAIL'.
+      CLEAR gv_subrc.
+      PERFORM process_detail_0100 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      CALL SCREEN 0300.
+      CLEAR: zspb5017, zspb5022, zspb5023.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM process_update_0100 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      CALL SCREEN 0400.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  DATA: lv_vendt TYPE zspb5013-vendt,
+        lv_cname TYPE zspb5013-cname,
+        lv_index TYPE n LENGTH 3,
+        lv_itnum TYPE zspb5014-itnum.
+  DATA: lv_price TYPE ztpbproduct-price,
+        lv_punit TYPE ztpbproduct-punit,
+        lv_waers TYPE ztpbproduct-waers,
+        lv_pronm TYPE ztpbproduct_t-pname,
+        lv_ptext TYPE ztpbproduct_t-ptext.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+      PERFORM process_enter_0200.
+
+    WHEN 'CREATE'.
+      CLEAR gv_subrc.
+      PERFORM process_create_0200 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+    WHEN 'BDC'.
+      IF gv_file IS NOT INITIAL.
+        PERFORM get_excel_data.
+        PERFORM execute_bdc.
+
+
+        LEAVE TO SCREEN 0.
+
+      ENDIF.
+
+    WHEN 'DOWNLOAD'.
+      DATA: lv_fullpath TYPE string.
+
+      PERFORM download_bdc_object.
+
+
+
+
+    WHEN 'INSERT_B'.
+      CLEAR gv_subrc.
+      PERFORM process_insert_b_0200 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+    WHEN 'UPDATE_B'.
+
+      CLEAR gv_subrc.
+      PERFORM process_update_b_0200 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+    WHEN 'DELETE_B'.
+      CLEAR gv_subrc.
+      PERFORM process_delete_b_0200 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0201  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0201 INPUT.
+  CASE ok_code.
+*
+    WHEN 'ENTER' OR 'F4'.
+      IF zspb5015-pronr IS NOT INITIAL.
+
+        CALL FUNCTION 'ZFMPB_MATCHING_LGORT'
+          EXPORTING
+            iv_pronr = zspb5015-pronr
+          IMPORTING
+            ev_lgort = zspb5015-lgort.
+
+        " 메시지로 확인용 출력
+        MESSAGE s000(zmcpb) WITH '저장위치:' zspb5015-lgort.
+
+      ENDIF.
+*
+    WHEN 'CHECK'.
+      CLEAR gv_subrc.
+      PERFORM process_check_0201 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CLOSE'.
+      " 취소. 뒤로가기
+      MESSAGE s026(zmcpb). " 취소되었습니다.
+      gv_close = 4.
+      CLEAR zspb5015.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+      " 상품 금액, 단위, 상품명 취득
+      CLEAR gs_proin.
+      PERFORM get_product_info USING zspb5015-pronr
+                               CHANGING gs_proin.
+
+      MOVE-CORRESPONDING gs_proin TO zspb5015.
+      zspb5015-pronm = gs_proin-pname.
+
+      " 플랜트명, 저장위치명 취득
+      PERFORM get_plant_name USING   zspb5015-plant
+                            CHANGING zspb5015-pname.
+
+      PERFORM get_storage_name  USING    zspb5015-lgort
+                                CHANGING zspb5015-sname.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      CLEAR gv_subrc.
+      PERFORM process_enter_0400.
+
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM process_update_0400 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+    WHEN 'DELETE'.
+      CLEAR gv_subrc.
+      PERFORM process_delete_0400 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      LEAVE TO SCREEN 0100.
+
+    WHEN 'INSERT_B'.
+
+      CLEAR gv_subrc.
+      PERFORM process_insert_b_0400 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+    WHEN 'UPDATE_B'.
+      CLEAR gv_subrc.
+      PERFORM process_update_b_0400 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+
+
+    WHEN 'DELETE_B'.
+      CLEAR gv_subrc.
+      PERFORM process_delete_b_0400 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0401  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0401 INPUT.
+  CASE ok_code.
+    WHEN 'CHECK'.
+      CLEAR gv_subrc.
+      PERFORM process_check_0401 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      LEAVE TO SCREEN 0.
+
+
+    WHEN 'CLOSE'.
+      " 취소. 뒤로가기
+      MESSAGE s026(zmcpb). " 취소되었습니다.
+      gv_close = 4.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+      CLEAR gs_proin.
+      PERFORM get_product_info USING zspb5021-pronr
+                               CHANGING gs_proin.
+
+      MOVE-CORRESPONDING gs_proin TO zspb5021.
+
+      zspb5021-pronm = gs_proin-pname.
+
+      " 플랜트명, 저장위치명 취득
+      PERFORM get_plant_name USING   zspb5021-plant
+                            CHANGING zspb5021-pname.
+
+      PERFORM get_storage_name  USING    zspb5021-lgort
+                                CHANGING zspb5021-sname.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_DATA_FILE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_data_file INPUT.
+  " 목적 : BDC 실행용 엑셀 파일 선택 다이얼로그 띄우고
+  " 선택된 파일을 gv_file 변수에 넣음
+  DATA: lt_file TYPE filetable,
+        ls_file TYPE file_table,
+        lv_rc   TYPE i.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    CHANGING
+      file_table              = lt_file
+      rc                      = lv_rc
+    EXCEPTIONS
+      file_open_dialog_failed = 1
+      cntl_error              = 2
+      error_no_gui            = 3
+      not_supported_by_gui    = 4
+      OTHERS                  = 5.
+
+  READ TABLE lt_file INTO ls_file INDEX 1.
+  IF sy-subrc = 0.
+    gv_file = ls_file.
+  ENDIF.
+
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

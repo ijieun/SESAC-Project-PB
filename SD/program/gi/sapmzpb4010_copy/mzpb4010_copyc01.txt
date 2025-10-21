@@ -1,0 +1,36 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4010C01
+*&---------------------------------------------------------------------*
+CLASS lcl_handler IMPLEMENTATION.
+  METHOD on_double_click.
+    DATA: ls_data  LIKE gs_data,
+          lv_index TYPE lvc_index.
+    CLEAR: gv_sokey, lv_index.
+    lv_index = es_row_no-row_id.
+
+    " 실제 데이터 읽기
+    READ TABLE gt_data INDEX lv_index INTO ls_data.
+    IF sy-subrc = 0.
+      zspb1016-orddt = ls_data-orddt.
+      zspb1016-sonum = ls_data-sonum.
+      gv_sokey = ls_data-sonum.
+      MESSAGE s000(zmcpb) WITH '판매오더' gv_sokey '가 선택되었습니다.'.
+
+      CALL METHOD cl_gui_cfw=>set_new_ok_code
+        EXPORTING
+          new_code = 'ENTER'.
+    ENDIF.
+  ENDMETHOD.
+  METHOD handler_hotspot_click.
+    PERFORM hotspot_click USING e_row_id e_column_id.
+
+    " 강제 pai->pbo 타게
+    CALL METHOD cl_gui_cfw=>set_new_ok_code
+      EXPORTING
+        new_code = 'ENTER'.
+
+  ENDMETHOD.
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

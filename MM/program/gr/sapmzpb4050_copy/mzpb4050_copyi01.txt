@@ -1,0 +1,109 @@
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4050I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  DATA: lv_ponum TYPE zspb5012-ponum,
+        lv_orddt TYPE zspb5012-podat,
+        lv_grnum TYPE zspb5027-grnum.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      PERFORM get_po_list CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        MESSAGE s008(zmcpb) WITH '해당 조건에 대한'. " & 정보가 없습니다.
+      ENDIF.
+
+    WHEN 'DETAIL'.
+
+      CLEAR gv_subrc.
+      PERFORM get_selected_gr_row USING '상세조회'
+                                  CHANGING gv_subrc
+                                           lv_grnum.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      PERFORM set_default_0200 USING lv_grnum.
+      CALL SCREEN 200.
+      CLEAR: zspb5033, zspb5034.
+
+    WHEN 'TAB1' OR 'TAB2'.
+      mytab-activetab = ok_code.
+
+    WHEN 'GR_B'.
+      CLEAR gv_subrc.
+      PERFORM process_gr_b_0100 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+
+      CALL SCREEN 103 STARTING AT 10 5
+                 ENDING   AT 150 30.
+
+      mytab-activetab = 'TAB2'.
+
+    WHEN 'REFR'.
+      CLEAR  ok_code.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0103  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0103 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'CHECK'.
+      CLEAR gv_subrc.
+      PERFORM process_check_0103 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CLOSE'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CANCEL'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

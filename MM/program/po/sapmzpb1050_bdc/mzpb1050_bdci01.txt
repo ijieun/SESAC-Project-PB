@@ -1,0 +1,124 @@
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1050_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  DATA: lv_rcnt TYPE c LENGTH 2.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      CLEAR  gt_list.
+      PERFORM get_product_list.
+
+    WHEN 'CREATE'.
+      CALL SCREEN 200.
+      PERFORM get_product_list.
+      CLEAR zspb5003. " 생성 조건 초기화
+      CLEAR gv_pronr.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM get_selected_row USING '수정' CHANGING lv_rcnt gv_subrc.
+
+      IF gv_subrc <> 0.
+        CLEAR gv_subrc.
+        RETURN.
+      ENDIF.
+      PERFORM set_default_0300.
+      CALL SCREEN 300.
+      PERFORM get_product_list.
+      CLEAR gv_pronr.
+
+    WHEN 'DETAIL'.
+      PERFORM get_selected_row  USING '조회' CHANGING lv_rcnt gv_subrc.
+
+      IF gv_subrc <> 0.
+        CLEAR gv_subrc.
+        RETURN.
+      ENDIF.
+
+      CALL SCREEN 400.
+      CLEAR gv_pronr.
+
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+
+    WHEN 'CREATE'.
+      PERFORM create_product.
+
+      " 엑셀 업로드
+    WHEN 'UPLOAD'.
+      PERFORM select_file.
+      PERFORM upload_excel.
+
+      " BDC 실행
+    WHEN 'EXEC'.
+      PERFORM process_bdc.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+
+    WHEN 'UPDATE'.
+      PERFORM update_product_info.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

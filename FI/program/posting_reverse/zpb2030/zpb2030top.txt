@@ -1,0 +1,103 @@
+*&---------------------------------------------------------------------*
+*& Include ZPB2030TOP                                        Report ZPB2030
+*&
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& 기간 / 상품 / 회사별 전표 생성 가능한 문서들(IV, GR, GI) 일괄 조회
+*& +
+*& 문서 번호별 연관된 다른 문서들 일괄 조회
+*& ( Ex. PO번호 검색 시 PO와 연결된 GR, IV까지 조회 )
+*&---------------------------------------------------------------------*
+REPORT zpb2030.
+
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc.
+
+TABLES: ztpbjonlh,
+        ztpbproduct_t,
+        ztpbcustom,
+        ztpbvendor,
+        ztpbpoh,
+        ztpbsoh,
+        ztpbgrh,
+        ztpbgih,
+        ztpbinvh,
+
+        zspb3005, " 전표 헤더
+        zspb3006, " 전표 아이템
+
+        zspb3100.
+
+DATA: gt_inv    LIKE TABLE OF ztpbinvh,
+      gt_gr     LIKE TABLE OF ztpbgrh,
+      gt_gi     LIKE TABLE OF ztpbgih,
+      gt_po     LIKE TABLE OF ztpbpoh,
+      gt_so     LIKE TABLE OF ztpbsoh,
+      gt_vendor LIKE TABLE OF ztpbvendor,
+      gt_custom LIKE TABLE OF ztpbcustom,
+      gt_jonl   LIKE TABLE OF ztpbjonlh.
+
+DATA: BEGIN OF gs_data,
+        cel_col TYPE lvc_t_scol.
+    INCLUDE TYPE zspb3100.
+DATA: END OF gs_data,
+gt_data LIKE TABLE OF gs_data.
+
+
+DATA: go_dock TYPE REF TO cl_gui_docking_container,
+      go_grid TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat TYPE lvc_s_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort TYPE lvc_s_sort.
+
+CLASS lcl_handler DEFINITION.
+
+  PUBLIC SECTION.
+
+    DATA: go_alv_grid TYPE REF TO cl_gui_alv_grid.
+
+    CLASS-METHODS handle_hotspot_click
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no sender.
+
+ENDCLASS.
+
+DATA: go_handler TYPE REF TO lcl_handler.
+
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-t01.
+SELECTION-SCREEN BEGIN OF LINE.
+PARAMETERS pa_ra1  RADIOBUTTON GROUP gr1 DEFAULT 'X' USER-COMMAND uc.
+SELECTION-SCREEN COMMENT (9) TEXT-t04 FOR FIELD pa_ra1.
+
+SELECTION-SCREEN POSITION 20.
+PARAMETERS pa_ra2 RADIOBUTTON GROUP gr1.
+SELECTION-SCREEN COMMENT (9) TEXT-t05 FOR FIELD pa_ra2.
+
+SELECTION-SCREEN POSITION 40.
+PARAMETERS pa_ra3 RADIOBUTTON GROUP gr1.
+SELECTION-SCREEN COMMENT (9) TEXT-t06 FOR FIELD pa_ra3.
+SELECTION-SCREEN END OF LINE.
+SELECTION-SCREEN END OF BLOCK b01.
+
+SELECTION-SCREEN BEGIN OF BLOCK b02 WITH FRAME TITLE TEXT-t02.
+SELECT-OPTIONS: so_pdate FOR ztpbjonlh-pdate,
+                so_dtype FOR ztpbjonlh-dtype,
+                so_invno FOR ztpbinvh-invno,
+                so_grnum FOR ztpbgrh-grnum,
+                so_ginum FOR ztpbgih-ginum,
+                so_vendr FOR ztpbvendor-vendr,
+                so_cusnr FOR ztpbcustom-cusnr.
+SELECTION-SCREEN END OF BLOCK b02.
+
+SELECTION-SCREEN BEGIN OF BLOCK b03 WITH FRAME TITLE TEXT-t03.
+SELECT-OPTIONS: so_rpono FOR ztpbpoh-ponum,
+                so_rsono FOR ztpbsoh-sonum,
+                so_rgrno FOR ztpbgrh-grnum,
+                so_rgino FOR ztpbgih-ginum.
+SELECTION-SCREEN END OF BLOCK b03.
+
+PARAMETERS pa_max TYPE n LENGTH 3 VISIBLE LENGTH 3 DEFAULT 200.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

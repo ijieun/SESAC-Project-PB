@@ -1,0 +1,75 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2030I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+    WHEN 'BDC'.
+      CALL SCREEN 101 STARTING AT 100 3.
+      CALL METHOD go_grid->refresh_table_display
+*        EXPORTING
+*          is_stable      =
+*          i_soft_refresh =
+*        EXCEPTIONS
+*          finished       = 1
+*          others         = 2
+              .
+      IF sy-subrc <> 0.
+*       Implement suitable error handling here
+      ENDIF.
+
+*      IF pa_ra1 = 'X'.
+*        PERFORM get_data_no_j.
+*      ELSEIF pa_ra2 = 'X'.
+*        PERFORM get_data_j.
+*      ELSEIF pa_ra3 = 'X'.
+*        PERFORM get_data_all_j.
+*      ENDIF.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+
+  CASE ok_code.
+    WHEN 'ENTER'.
+      PERFORM bdc.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

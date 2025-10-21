@@ -1,0 +1,53 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1050TOP                                      Module Pool      SAPMZPB1050
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1050.
+
+" Common
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_langu TYPE c LENGTH 10.
+
+" Data
+DATA: gv_pronr TYPE zspb5002-pronr.
+"gs_data TYPE zspb5003.
+
+" 조회 조건
+RANGES: r_pronr FOR zspb5001-pronr.
+
+" 조회 화면
+TABLES: zspb5001.
+
+" ALV 출력
+TABLES: zspb5002.
+
+" 생성 화면, 수정 화면, 상세 조회 화면
+TABLES: zspb5003, zspb5004, zspb5005.
+
+" Main Table
+DATA: gs_list TYPE zspb5002,
+      gt_list LIKE TABLE OF gs_list.
+
+" ALV
+DATA: go_con TYPE REF TO cl_gui_custom_container,
+      go_alv TYPE REF TO cl_gui_alv_grid.
+
+" Layout
+DATA: gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat.
+
+" 파일 선택 필드
+DATA: gv_file  TYPE rlgrap-filename.
+" Excel
+DATA: gt_data TYPE TABLE OF alsmex_tabline,
+      gs_data TYPE alsmex_tabline.
+DATA: gs_excel TYPE zspb5003,
+      gt_excel LIKE TABLE OF gs_excel.
+"BDC
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

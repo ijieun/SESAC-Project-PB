@@ -1,0 +1,198 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1031I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE ok_code.
+    WHEN 'RAD1'.
+      PERFORM get_list.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+      CLEAR gv_fullname.
+      PERFORM get_empname USING    zspb3003-pernr
+                          CHANGING zspb3003-lname
+                                   zspb3003-fname
+                                   gv_fullname.
+
+    WHEN 'SEARCH'.
+      CLEAR gv_fullname.
+      PERFORM get_list.
+      PERFORM get_empname USING    zspb3003-pernr
+                          CHANGING zspb3003-lname
+                                   zspb3003-fname
+                                   gv_fullname.
+
+    WHEN 'CREATE'.
+      zspb3004-waers = 'KRW'.
+      zspb3004-pflag = ''.
+      gv_dynnr = '0200'.
+      CLEAR: zspb3003, gv_fullname.
+      PERFORM get_list.
+
+      CALL SCREEN 200.
+      CLEAR: zspb3003, zspb3004, gv_fullname, gv_dynnr.
+      zspb3003-pflag = 'X'.
+      PERFORM get_list.
+
+    WHEN 'UPDATE'.
+
+      PERFORM set_screen_0300.
+      CLEAR: zspb3003-vendr_s, zspb3003-vendr_f, zspb3003-pernr, gv_fullname.
+      PERFORM get_list.
+
+    WHEN 'DETAIL'.
+
+      PERFORM set_screen_0400.
+
+    WHEN 'DELETE'.
+
+      DATA: lt_row_no TYPE lvc_t_roid,
+            ls_row_no LIKE LINE OF lt_row_no,
+            lv_cnt    TYPE i.
+
+      CALL METHOD go_alv->get_selected_rows
+        IMPORTING
+          et_row_no = lt_row_no.
+
+      DESCRIBE TABLE lt_row_no LINES lv_cnt.
+
+      CASE lv_cnt.
+        WHEN '0'.
+          MESSAGE i002(zmcpb) WITH '삭제'. " & 할 라인을 선택하세요.
+
+        WHEN OTHERS.
+
+          READ TABLE lt_row_no INDEX 1 INTO ls_row_no.
+          READ TABLE gt_data INDEX ls_row_no-row_id INTO gs_data.
+          IF gs_data-pflag = 'X'.
+            MESSAGE s000(zmcpb) WITH '이미 삭제된 레코드입니다.'(c18). " & & & &
+            RETURN.
+          ENDIF.
+
+          DATA: lt_update TYPE TABLE OF ztpbvendor,
+                ls_update LIKE LINE OF lt_update.
+
+          LOOP AT lt_row_no INTO ls_row_no.
+
+            READ TABLE gt_data INDEX ls_row_no-row_id INTO gs_data.
+            IF sy-subrc = 0.
+              gs_data-pflag = 'X'.
+              MODIFY gt_data FROM gs_data INDEX ls_row_no-row_id.
+
+              MOVE-CORRESPONDING gs_data TO ls_update.
+              ls_update-vendr = gs_data-vendr_s.
+              APPEND ls_update TO lt_update.
+              UPDATE ztpbcustom FROM TABLE lt_update.
+
+              CLEAR gs_data.
+            ENDIF.
+
+          ENDLOOP.
+
+          UPDATE ztpbvendor FROM TABLE lt_update.
+          PERFORM get_list.
+          PERFORM alv_refresh.
+
+      ENDCASE.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      CLEAR gv_fullname.
+      PERFORM get_empname USING    zspb3004-pernr
+                          CHANGING zspb3004-lname
+                                   zspb3004-fname
+                                   gv_fullname.
+
+    WHEN 'APPLY'.
+      PERFORM insert_new_vendor.
+      PERFORM get_list.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'BDC'.
+      PERFORM f4_file.
+      PERFORM get_excel_file.
+      PERFORM bdc.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      CLEAR zspb3004-pname.
+      PERFORM get_empname USING    zspb3004-pernr
+                          CHANGING zspb3004-lname
+                                   zspb3004-fname
+                                   zspb3004-pname.
+
+    WHEN 'UPDATE'.
+      PERFORM update_vendor_info.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

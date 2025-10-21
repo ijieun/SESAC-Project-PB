@@ -1,0 +1,700 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2051F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data .
+  " 납기 진행 중인 건 미포함
+
+  DATA: lt_po LIKE TABLE OF gs_data,
+        lt_gr LIKE TABLE OF gs_data.
+  DATA: ls_po    LIKE gs_data,
+        ls_gr    LIKE gs_data,
+        lv_dedat TYPE ztpbpoh-dedat,
+        lv_stdat TYPE ztpbgrh-stdat.
+  DATA: lt_total LIKE gt_data,
+        ls_total LIKE gs_data.
+
+  " 1. 벤더별 PO 집계 (PO 발주 건수 계산)
+  PERFORM get_po_count USING 'D'
+                       CHANGING lt_po.
+
+
+  " 2. 벤더별 GR 집계 (납기 건수 계산)
+  PERFORM get_gr_count USING 'D'
+                      CHANGING lt_gr.
+
+  " 3. 벤더사별 PO 총금액
+  PERFORM get_total_price USING 'I'
+                        CHANGING lt_total.
+
+
+
+  " 4. 벤더사별 KPI 계산 (납기준수율 + 평균지연일)
+  LOOP AT lt_po INTO ls_po.
+
+    CLEAR gs_data.
+    gs_data-vendr = ls_po-vendr.
+    gs_data-pocnt = ls_po-pocnt.
+
+    " 해당 벤더의 입고 수량 찾기
+    READ TABLE lt_gr INTO ls_gr WITH KEY vendr = ls_po-vendr.
+    IF sy-subrc = 0.
+      gs_data-grcnt = ls_gr-grcnt.
+    ENDIF.
+
+    " 총금액 구하기
+    READ TABLE lt_total INTO ls_total WITH KEY vendr = ls_po-vendr.
+    IF sy-subrc = 0.
+      gs_data-total = ls_total-total.
+    ENDIF.
+
+
+    " 납기 준수율 계산 (%)
+    PERFORM get_delivery_rate.
+
+
+    " 평균 지연일 계산 (입고일 - 납기일 평균)
+    PERFORM get_avg_delay USING 'D'
+                                ls_po.
+
+    " 신호등 아이콘
+    PERFORM set_drate_light.
+
+
+    " 벤더명 조회
+    PERFORM get_vendor_name.
+
+    " 셀 색상 칠하기
+    PERFORM paint_drate_color.
+    PERFORM paint_delay_color.
+
+    gs_data-waers = 'KRW'.
+
+    APPEND gs_data TO gt_data.
+    CLEAR gs_data.
+
+
+  ENDLOOP.
+
+  " 데이터 없을 때 메시지 출력
+  IF gt_data IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '조회된 데이터가 없습니다.'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_0100
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_0100 .
+  IF go_grid IS INITIAL.
+
+    PERFORM: create_grid,
+
+             set_layo,
+             set_fcat,
+*             set_sort,
+
+             display_alv.
+
+  ELSE.
+    CALL METHOD go_grid->refresh_table_display.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GRID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_grid .
+
+  CREATE OBJECT go_dock
+    EXPORTING
+*     parent                      =
+      repid                       = sy-repid
+      dynnr                       = sy-dynnr
+      side                        = cl_gui_docking_container=>dock_at_top
+*     side                        = cl_gui_docking_container=>dock_at_bottom
+      extension                   = 1000
+*     style                       =
+*     lifetime                    = lifetime_default
+*     caption                     =
+*     metric                      = 0
+*     ratio                       =
+*     no_autodef_progid_dynnr     =
+*     name                        =
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+    "& Object Exceptions
+    MESSAGE a000(zmcpb) WITH 'CL_GUI_DOCKING_CONTAINER'.
+  ENDIF.
+
+  CREATE OBJECT go_grid
+    EXPORTING
+      i_parent = go_dock.
+
+  IF sy-subrc <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo .
+
+  gs_layo-cwidth_opt = 'A'.
+  gs_layo-zebra = 'X'.
+  gs_layo-ctab_fname = 'IT_COL'.
+  gs_layo-excp_fname = 'LIGHT'.
+  gs_layo-excp_led   = 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = 'ZSPB5100'
+    CHANGING
+      ct_fieldcat      = gt_fcat.
+
+  LOOP AT gt_fcat INTO ls_fcat.
+
+    CASE ls_fcat-fieldname.
+      WHEN 'LIGHT'.
+        ls_fcat-coltext = '납기 준수율'.
+      WHEN 'VENDR'.
+        ls_fcat-coltext = '벤더사 번호'.
+      WHEN 'VENDT'.
+        ls_fcat-coltext = '벤더사명'.
+      WHEN 'POCNT'.
+        ls_fcat-coltext = '발주 건수'.
+      WHEN 'GRCNT'.
+        ls_fcat-coltext = '입고 건수'.
+      WHEN 'DRATE'.
+        ls_fcat-coltext = '납기 준수율(%)'.
+      WHEN 'AVDEL'.
+        ls_fcat-coltext = '평균 지연일수'.
+    ENDCASE.
+
+    MODIFY gt_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*FORM set_sort .
+*
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+
+  CALL METHOD go_grid->set_table_for_first_display
+    EXPORTING
+      is_layout                     = gs_layo
+    CHANGING
+      it_outtab                     = gt_data
+      it_fieldcatalog               = gt_fcat
+      it_sort                       = gt_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_PO_COUNT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_po_count USING p_variant TYPE c
+*                  CHANGING lt_po TYPE zspb5100_t.
+                  CHANGING lt_po LIKE gt_data.
+  " PO 발주 건수 계산 ( 주문 승인된 건만 )
+
+  " 진행중인 납기일자 미포함
+  IF p_variant = 'D'.
+
+    SELECT vendr COUNT(*) AS pocnt
+       INTO CORRESPONDING FIELDS OF TABLE lt_po
+       FROM ztpbpoh
+      WHERE stats = 'R' " 주문 승인
+        AND pflag <> 'X'
+        AND dedat <= sy-datum " 납기일자가 오늘 이전
+        AND vendr IN so_vendr
+        AND podat IN so_podat
+      GROUP BY vendr.
+    " 포함
+  ELSEIF p_variant = 'I'.
+    SELECT vendr COUNT(*) AS pocnt
+          INTO CORRESPONDING FIELDS OF TABLE lt_po
+          FROM ztpbpoh
+         WHERE stats = 'R'
+           AND pflag <> 'X'
+           AND vendr IN so_vendr
+           AND podat IN so_podat
+         GROUP BY vendr.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GR_COUNT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gr_count  USING p_variant TYPE c
+*                  CHANGING lt_gr TYPE zspb5100_t.
+                  CHANGING lt_gr LIKE gt_data.
+  " 납기 건수 계산
+
+  " 진행중인 납기일자 미포함
+  IF p_variant = 'D'.
+    SELECT a~vendr COUNT(*) AS grcnt
+       INTO CORRESPONDING FIELDS OF TABLE lt_gr
+       FROM ztpbpoh AS a
+        INNER JOIN ztpbgrh AS b
+          ON a~ponum = b~ponum
+      WHERE a~stats = 'R' " 주문 승인된 경우
+        AND a~pflag <> 'X'
+        AND a~dedat <= sy-datum " 오늘보다 납기일이 이전인 경우만
+        AND a~vendr IN so_vendr
+        AND a~podat IN so_podat " PO 조건에 해당하는 입고 건만 조회
+        AND b~stdat IN so_stdat
+       GROUP BY a~vendr.
+
+    " 포함
+  ELSEIF p_variant = 'I'.
+    SELECT a~vendr COUNT(*) AS grcnt
+       INTO CORRESPONDING FIELDS OF TABLE lt_gr
+       FROM ztpbpoh AS a
+        INNER JOIN ztpbgrh AS b
+          ON a~ponum = b~ponum
+      WHERE a~stats = 'R' " 주문 승인된 경우
+        AND a~pflag <> 'X'
+        AND a~vendr IN so_vendr
+        AND a~podat IN so_podat " PO 조건에 해당하는 입고 건만 조회
+        AND b~stdat IN so_stdat
+       GROUP BY a~vendr.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_AVG_DELAY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_avg_delay USING p_variant TYPE c " D / I
+                         ls_po LIKE gs_data. "TYPE zspb5100.
+  " 목적 : 평균 지연일 계산 (입고일 - 납기일 평균)
+  DATA: lv_days  TYPE i,
+        lv_total TYPE i,
+        lv_count TYPE i,
+        lv_avg   TYPE p DECIMALS 1.
+  DATA: lv_dedat TYPE ztpbpoh-dedat,
+        lv_stdat TYPE ztpbgrh-stdat.
+*  DATA: ls_po    LIKE gs_data.
+
+  DATA: BEGIN OF ls_delay,
+          dedat TYPE ztpbpoh-dedat, " 납기일자
+          stdat TYPE ztpbgrh-stdat, " 입고일자
+        END OF ls_delay,
+        lt_delay LIKE TABLE OF ls_delay.
+
+  " 진행중인 납기일자 미포함
+  IF p_variant = 'D'.
+    SELECT a~dedat b~stdat
+      INTO CORRESPONDING FIELDS OF TABLE lt_delay
+      FROM ztpbpoh AS a
+        INNER JOIN ztpbgrh AS b
+          ON a~ponum = b~ponum
+      WHERE a~vendr = ls_po-vendr
+        AND stats = 'R' " 주문 승인
+        AND a~pflag <> 'X'
+        AND a~dedat <= sy-datum.
+
+    " 포함
+  ELSEIF p_variant = 'I'.
+
+    SELECT a~dedat b~stdat
+     INTO CORRESPONDING FIELDS OF TABLE lt_delay
+      FROM ztpbpoh AS a
+        INNER JOIN ztpbgrh AS b
+          ON a~ponum = b~ponum
+      WHERE a~vendr = ls_po-vendr
+        AND stats = 'R' " 주문 승인
+        AND a~pflag <> 'X'.
+  ENDIF.
+
+  CLEAR: lv_total, lv_count, lv_avg.
+  LOOP AT lt_delay INTO ls_delay.
+    " 지연일수 = 입고일 - 납기일
+    lv_days = ls_delay-stdat - ls_delay-dedat.
+    IF lv_days < 0.
+      lv_days = 0.
+    ENDIF.
+    lv_total = lv_total + lv_days.
+    lv_count = lv_count + 1.
+  ENDLOOP.
+
+  IF lv_count > 0.
+    lv_avg = lv_total / lv_count.
+  ENDIF.
+
+  gs_data-avdel = lv_avg.
+
+
+*ENDLOOP.
+
+*  lv_days = lv_stdat - lv_dedat.
+*  IF lv_days < 0.
+*    lv_days = 0.
+*  ENDIF.
+*
+*  lv_total = lv_total + lv_days.
+*  lv_count = lv_count + 1.
+*
+*  IF lv_count > 0.
+*    lv_avg = lv_total / lv_count.
+*  ENDIF.
+*
+*  gs_data-avdel = lv_avg.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DELIVERY_RATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_delivery_rate .
+  " 목적 : 납기 준수율 계산 (%)
+  IF gs_data-pocnt > 0.
+    gs_data-drate = ( gs_data-grcnt * 100 ) / gs_data-pocnt.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_VENDOR_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_vendor_name .
+  SELECT SINGLE vendt
+        FROM ztpbvendor
+        INTO gs_data-vendt
+        WHERE vendr = gs_data-vendr
+          AND pflag <> 'X'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DRATE_LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_drate_light .
+  IF gs_data-drate >= 99.
+    gs_data-light = '3'. " 초록
+  ELSEIF gs_data-drate >= 40.
+    gs_data-light = '2'. " 노랑
+  ELSE.
+    gs_data-light = '1'. " 빨강
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA_ALL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data_all .
+  " 납기 진행 중인 건 포함
+
+  DATA: lt_po LIKE TABLE OF gs_data,
+        lt_gr LIKE TABLE OF gs_data.
+  DATA: ls_po    LIKE gs_data,
+        ls_gr    LIKE gs_data,
+        lv_dedat TYPE ztpbpoh-dedat,
+        lv_stdat TYPE ztpbgrh-stdat.
+  DATA: lt_total LIKE gt_data,
+        ls_total LIKE gs_data.
+
+
+  " 1. 벤더별 PO 집계
+  PERFORM get_po_count USING 'I'
+                       CHANGING lt_po.
+
+
+  " 2. 벤더별 GR 집계
+  PERFORM get_gr_count USING 'I'
+                       CHANGING lt_gr.
+
+  " 3. 벤더사별 PO 총금액
+  PERFORM get_total_price USING 'I'
+                        CHANGING lt_total.
+
+
+
+  " 4. 벤더사별 KPI 계산 (납기준수율 + 평균지연일)
+  LOOP AT lt_po INTO ls_po.
+    CLEAR gs_data.
+    gs_data-vendr  = ls_po-vendr.
+    gs_data-pocnt = ls_po-pocnt.
+
+    " 해당 벤더의 입고 수량 찾기
+    READ TABLE lt_gr INTO ls_gr WITH KEY vendr = ls_po-vendr.
+    IF sy-subrc = 0.
+      gs_data-grcnt = ls_gr-grcnt.
+    ENDIF.
+
+    " 총금액 구하기
+    READ TABLE lt_total INTO ls_total WITH KEY vendr = ls_po-vendr.
+    IF sy-subrc = 0.
+      gs_data-total = ls_total-total.
+    ENDIF.
+
+    " 납기 준수율 계산 (%)
+    PERFORM get_delivery_rate.
+
+
+    " 평균 지연일 계산 (입고일 - 납기일 평균)
+    PERFORM get_avg_delay USING 'I'
+                                ls_po.
+
+
+    " 신호등 아이콘
+    PERFORM set_drate_light.
+
+
+    " 벤더명 조회
+    PERFORM get_vendor_name.
+
+    " 셀 색상 칠하기
+    PERFORM paint_drate_color.
+    PERFORM paint_delay_color.
+
+    gs_data-waers = 'KRW'.
+
+    APPEND gs_data TO gt_data.
+  ENDLOOP.
+
+  " 데이터 없을 때 메시지 출력
+  IF gt_data IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '조회된 데이터가 없습니다.'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  PAINT_DRATE_COLOR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM paint_drate_color .
+  " 목적: 셀 색상 칠하기
+
+  CLEAR gs_col.
+  IF gs_data-drate >= 100.
+    gs_col-fname = 'DRATE'.
+    gs_col-color-col = '5'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+  ELSEIF gs_data-drate >= 40 AND gs_data-drate <= 99.
+    gs_col-fname = 'DRATE'.
+    gs_col-color-col = '3'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+  ELSEIF gs_data-drate < 40.
+    gs_col-fname = 'DRATE'.
+    gs_col-color-col = '6'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+  ENDIF.
+  APPEND gs_col TO gs_data-it_col.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  PAINT_DELAY_COLOR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM paint_delay_color .
+  " 목적: 셀 색상 칠하기
+
+  CLEAR gs_col.
+  " 초록
+  IF gs_data-avdel <= 0 .
+    gs_col-fname = 'AVDEL'.
+    gs_col-color-col = '5'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+    " 노랑
+  ELSEIF gs_data-avdel > 0 AND gs_data-avdel < 5.
+    gs_col-fname = 'AVDEL'.
+    gs_col-color-col = '3'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+    " 빨강
+  ELSEIF gs_data-avdel >= 5.
+    gs_col-fname = 'AVDEL'.
+    gs_col-color-col = '6'.
+    gs_col-color-int = '1'.
+    gs_col-color-inv = '0'.
+
+  ENDIF.
+  APPEND gs_col TO gs_data-it_col.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_total_PRICE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0855   text
+*      <--P_LS_PO_TOTAL  text
+*----------------------------------------------------------------------*
+FORM get_total_price   USING    p_variant TYPE c  " D: 진행중 제외 / I: 포함
+                      CHANGING lt_total  LIKE gt_data.
+
+  CLEAR lt_total.
+
+  IF p_variant = 'D'.
+
+    SELECT a~vendr,
+           SUM( b~price * b~poqty ) AS total
+      INTO CORRESPONDING FIELDS OF TABLE @lt_total
+      FROM ztpbpoh AS a
+        INNER JOIN ztpbpoi AS b
+          ON a~ponum = b~ponum
+      WHERE a~stats = 'R'
+        AND a~pflag <> 'X'
+        AND a~dedat <= @sy-datum
+        AND a~vendr IN @so_vendr
+        AND a~podat IN @so_podat
+      GROUP BY a~vendr.
+
+  ELSEIF p_variant = 'I'.
+
+    SELECT a~vendr,
+           SUM( b~price * b~poqty ) AS total
+      INTO CORRESPONDING FIELDS OF TABLE @lt_total
+      FROM ztpbpoh AS a
+        INNER JOIN ztpbpoi AS b
+          ON a~ponum = b~ponum
+      WHERE a~stats = 'R'
+        AND a~pflag <> 'X'
+        AND a~vendr IN @so_vendr
+        AND a~podat IN @so_podat
+      GROUP BY a~vendr.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+  " 목적 : 초기 화면 구성
+  " 납기 진행 중인 건 미포함
+  IF pa_ra1 = 'X'.
+    gv_pa = 'D'.
+    PERFORM get_data.
+
+    " 납기 진행 중인 건 포함 (전체)
+  ELSEIF pa_ra2 = 'X'.
+    gv_pa = 'I'.
+    PERFORM get_data_all.
+  ENDIF.
+
+
+  CALL SCREEN 100.
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

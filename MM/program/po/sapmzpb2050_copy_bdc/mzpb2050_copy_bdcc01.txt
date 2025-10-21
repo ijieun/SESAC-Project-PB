@@ -1,0 +1,20 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2050C01
+*&---------------------------------------------------------------------*
+
+  CLASS lcl_handler IMPLEMENTATION.
+    METHOD handler_hotspot_click.
+      " 상품 상세조회
+      PERFORM hotspot_click_pronr USING e_row_id e_column_id.
+
+    ENDMETHOD.
+
+    METHOD handle_hotspot_click_po.
+      " PO 상세조회
+      PERFORM hotspot_click_po USING e_row_id e_column_id es_row_no.
+    ENDMETHOD.
+
+  ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

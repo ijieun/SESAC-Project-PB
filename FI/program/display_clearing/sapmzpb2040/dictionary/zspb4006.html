@@ -1,0 +1,331 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<title>Dictionary object- ZSPB4006</title>
+<style type="text/css">
+  th{text-align:left}
+  .cell{
+     font-family:"Courier New", Courier, monospace;
+     color:#000;
+     font-size:12px;
+     background-color:#F2F4F7;
+  }
+  .cell td { border: thin solid #ccc; }
+</style>
+<style type="text/css">
+  .normal{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:12px }
+  .footer{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:12px; text-align: center }
+  h2{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:16px; font-weight:800 }
+  h3{ font-family:Arial, Helvetica, sans-serif; color:#000; font-size:14px; font-weight:800 }
+  .outerTable{
+   width:100%;
+   border-top-width: thin;
+   border-right-width: thin;
+   border-right-width: thin;
+   border-left-width: thin;
+   border-top-style: solid;
+   border-right-style: solid;
+   border-bottom-style: solid;
+   border-left-style: solid;
+  }
+  .innerTable{
+   width:100%;
+   border-top-width: thin;
+   border-right-width: thin;
+   border-bottom-width: thin;
+   border-left-width: thin;
+   border-top-style: solid;
+   border-right-style: solid;
+   border-bottom-style: solid;
+   border-left-style: solid;
+  }
+</style>
+</head>
+<body>
+  <table class="outerTable">
+    <tr>
+      <td><h2>Table: ZSPB4006</h2>
+  <h3>Description: [PB] 전표 조회 Detail Screen ALV</h3></td>
+    </tr>
+    <tr>
+      <td><!--This is where our main table begins  -->
+<table class="innerTable">
+<tr>
+  <th>Row</th>
+  <th>Field name</th>
+  <th>Position</th>
+  <th>Key</th>
+  <th>Data element</th>
+  <th>Domain</th>
+  <th>Datatype</th>
+  <th>Length</th>
+  <th>Lowercase</th>
+  <th>Domain text</th>
+</tr>
+<tr class="cell">
+  <td> 1</td>
+  <td>MANDT</td>
+  <td>1</td>
+  <td>&nbsp;</td>
+  <td>MANDT</td>
+  <td>MANDT</td>
+  <td>CLNT</td>
+  <td>3</td>
+  <td>&nbsp;</td>
+  <td>Client</td>
+</tr>
+<tr class="cell">
+  <td> 2</td>
+  <td>JOCUM</td>
+  <td>2</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_JOCUM</td>
+  <td>ZDPB_JOCUM</td>
+  <td>CHAR</td>
+  <td>10</td>
+  <td>&nbsp;</td>
+  <td>[PB] 전표번호</td>
+</tr>
+<tr class="cell">
+  <td> 3</td>
+  <td>ITNUM</td>
+  <td>3</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_ITNUM</td>
+  <td>ZDPB_ITNUM</td>
+  <td>NUMC</td>
+  <td>3</td>
+  <td>&nbsp;</td>
+  <td>[PB] 아이템 번호</td>
+</tr>
+<tr class="cell">
+  <td> 4</td>
+  <td>POKEY</td>
+  <td>4</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_POKEY</td>
+  <td>ZDPB_POKEY</td>
+  <td>CHAR</td>
+  <td>2</td>
+  <td>&nbsp;</td>
+  <td>[PB] 전기키</td>
+</tr>
+<tr class="cell">
+  <td> 5</td>
+  <td>DBCRF</td>
+  <td>5</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_DBCRF</td>
+  <td>ZDPB_DBCRF</td>
+  <td>CHAR</td>
+  <td>1</td>
+  <td>&nbsp;</td>
+  <td>[PB] 대차구분</td>
+</tr>
+<tr class="cell">
+  <td> 6</td>
+  <td>GLACC</td>
+  <td>6</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_GLACC</td>
+  <td>ZDPB_GLACC</td>
+  <td>NUMC</td>
+  <td>8</td>
+  <td>&nbsp;</td>
+  <td>[PB] 계정과목번호</td>
+</tr>
+<tr class="cell">
+  <td> 7</td>
+  <td>GNAME</td>
+  <td>7</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_GNAME</td>
+  <td>ZDPB_NAME</td>
+  <td>CHAR</td>
+  <td>50</td>
+  <td>X</td>
+  <td>[PB] 계정과목명</td>
+</tr>
+<tr class="cell">
+  <td> 8</td>
+  <td>PRICE</td>
+  <td>8</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_PRICE</td>
+  <td>ZDPB_PRICE</td>
+  <td>CURR</td>
+  <td>15</td>
+  <td>&nbsp;</td>
+  <td>[PB] 금액</td>
+</tr>
+<tr class="cell">
+  <td> 9</td>
+  <td>WAERS</td>
+  <td>9</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_WAERS</td>
+  <td>WAERS</td>
+  <td>CUKY</td>
+  <td>5</td>
+  <td>&nbsp;</td>
+  <td>[PB] 통화단위</td>
+</tr>
+<tr class="cell">
+  <td>10</td>
+  <td>DESCR</td>
+  <td>10</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_DESCR</td>
+  <td>DDTEXT</td>
+  <td>CHAR</td>
+  <td>60</td>
+  <td>X</td>
+  <td>[PB] 부가설명</td>
+</tr>
+<tr class="cell">
+  <td>11</td>
+  <td>CLJOCUM</td>
+  <td>11</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_CLJOCUM</td>
+  <td>ZDPB_JOCUM</td>
+  <td>CHAR</td>
+  <td>10</td>
+  <td>&nbsp;</td>
+  <td>[PB] 반제 전표번호</td>
+</tr>
+<tr class="cell">
+  <td>12</td>
+  <td>CLDATE</td>
+  <td>12</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_CLDATE</td>
+  <td>ZDPB_CLDATE</td>
+  <td>DATS</td>
+  <td>8</td>
+  <td>&nbsp;</td>
+  <td>[PB] 반제 처리일자</td>
+</tr>
+<tr class="cell">
+  <td>13</td>
+  <td>CFLAG</td>
+  <td>13</td>
+  <td>&nbsp;</td>
+  <td>ZEPB_CFLAG</td>
+  <td>ZDPB_CFLAG</td>
+  <td>CHAR</td>
+  <td>4</td>
+  <td>&nbsp;</td>
+  <td>[PB] 반제여부</td>
+</tr>
+      </table>
+     </td>
+   </tr>
+<br/>
+  <table class="outerTable">
+    <tr>
+      <td><h2>Fixed Domain Values </h2>
+    </tr>
+    <tr>
+      <td><!--This is where our main table begins  -->
+<table class="innerTable">
+<tr>
+  <th>Domain Name</th>
+  <th>Value Low</th>
+  <th>Value High</th>
+  <th>Text</th>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>40</td>
+  <td>&nbsp;</td>
+  <td>총계정원장 차변 발생</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>50</td>
+  <td>&nbsp;</td>
+  <td>총계정원장 대변 발생</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>01</td>
+  <td>&nbsp;</td>
+  <td>고객 계정 채권 발생</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>11</td>
+  <td>&nbsp;</td>
+  <td>고객 계정 대변 메모</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>05</td>
+  <td>&nbsp;</td>
+  <td>고객 계정 지급</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>15</td>
+  <td>&nbsp;</td>
+  <td>고객 계정 입금</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>21</td>
+  <td>&nbsp;</td>
+  <td>구매처 계정 대변 메모</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>31</td>
+  <td>&nbsp;</td>
+  <td>구매처 계정 채무 발생</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>25</td>
+  <td>&nbsp;</td>
+  <td>구매처 계정 지급</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_POKEY</td>
+  <td>35</td>
+  <td>&nbsp;</td>
+  <td>구매처 계정 입금</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_DBCRF</td>
+  <td>S</td>
+  <td>&nbsp;</td>
+  <td>차변</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_DBCRF</td>
+  <td>H</td>
+  <td>&nbsp;</td>
+  <td>대변</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_CFLAG</td>
+  <td>&nbsp;</td>
+  <td>&nbsp;</td>
+  <td>미완료</td>
+</tr>
+<tr class="cell">
+  <td>ZDPB_CFLAG</td>
+  <td>X</td>
+  <td>&nbsp;</td>
+  <td>완료</td>
+</tr>
+      </table>
+     </td>
+   </tr>
+   <tr>
+<td class="footer">Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750</td>
+   </tr>
+</table>
+</body>
+</html>

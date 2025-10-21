@@ -1,0 +1,187 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2010O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF go_con IS INITIAL.
+    PERFORM create_alv USING 'CON' go_con go_alv.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->on_toolbar      FOR go_alv.
+    SET HANDLER go_handler->on_user_command FOR go_alv.
+    PERFORM get_so_list CHANGING gv_subrc.
+
+    PERFORM display_alv_0100.
+  ELSE.
+    PERFORM set_light.
+    PERFORM refresh_alv USING go_alv.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_RED'
+    IMPORTING
+      result                = icon_x
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_GREEN'
+    IMPORTING
+      result                = icon_r
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_YELLOW'
+    IMPORTING
+      result                = icon_w
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+  SET PF-STATUS 'S200'.
+  SET TITLEBAR 'T200'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_DEFAULT_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_default_0200 OUTPUT.
+  IF gv_sokey IS INITIAL.
+    GET PARAMETER ID 'ZPB2010D' FIELD gv_sokey.
+    PERFORM get_detail_info CHANGING gv_subrc.
+    IF gv_subrc IS NOT INITIAL.
+      MESSAGE i001(zmcpb).
+    ENDIF.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0200 OUTPUT.
+  IF go_con_item IS INITIAL.
+    PERFORM create_alv USING 'CON_ITEM' go_con_item go_alv_item.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->handler_hotspot_click FOR go_alv_item ACTIVATION 'X'.
+    PERFORM display_alv_0200.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_item.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0300 OUTPUT.
+  SET PF-STATUS 'S300'.
+  SET TITLEBAR 'T300'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0300 OUTPUT.
+  IF go_con_item2 IS INITIAL.
+    PERFORM create_alv USING 'CON_ITEM2' go_con_item2 go_alv_item2.
+    PERFORM display_alv_0300.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_item2.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0301  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0301 OUTPUT.
+  SET PF-STATUS 'S301'.
+  SET TITLEBAR 'T301'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0500  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0500 OUTPUT.
+  SET PF-STATUS 'S500'.
+  SET TITLEBAR 'T500'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0400  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0400 OUTPUT.
+  SET PF-STATUS 'S400'.
+  SET TITLEBAR 'T400'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0400  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0400 OUTPUT.
+  IF go_con_item3 IS INITIAL.
+    PERFORM create_alv USING 'CON_ITEM3' go_con_item3 go_alv_item3.
+    PERFORM display_alv_0400.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_item3.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0401  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0401 OUTPUT.
+  SET PF-STATUS 'S401'.
+  SET TITLEBAR 'T401'.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

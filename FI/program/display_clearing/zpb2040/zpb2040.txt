@@ -1,0 +1,81 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPB2040
+*&
+*&---------------------------------------------------------------------*
+*&  * 반제 진행 추적 및 반제 상태 집계
+*     - 월별 반제 건수 집계
+*     - 반제 전표 번호로 검색하면 반제 전표 번호와 일치하는 전표끼리 조회
+*&---------------------------------------------------------------------*
+
+INCLUDE ZPB2040TOP.
+*INCLUDE zpb2040topc.
+*INCLUDE zpb2040top                              .    " global Data
+
+INCLUDE ZPB2040O01.
+*INCLUDE zpb2040o01c.
+*INCLUDE zpb2040o01                              .  " PBO-Modules
+INCLUDE ZPB2040I01.
+*INCLUDE zpb2040i01c.
+*INCLUDE zpb2040i01                              .  " PAI-Modules
+INCLUDE ZPB2040F01.
+*INCLUDE zpb2040f01c.
+*INCLUDE zpb2040f01                              .  " FORM-Routines
+
+
+INITIALIZATION. "기본값
+  PERFORM set_default.
+
+AT SELECTION-SCREEN ON so_cljo. " 반제 전표번호 입력값 제한
+  PERFORM so_cljo_check.
+
+START-OF-SELECTION.   "EVENT
+
+  " 입력값 제한
+  IF ( so_cljo-low IS NOT INITIAL OR so_cljo-high IS NOT INITIAL )
+     AND ( so_cdone-low IS NOT INITIAL OR so_cdone-high IS NOT INITIAL ).
+    MESSAGE i000(zmcpb) WITH '반제 전표번호와 반제 완료율은 동시에 입력할 수 없습니다.'.
+    RETURN.
+    CLEAR: so_cljo-low, so_cljo-high, so_cdone-low , so_cdone-high.
+
+  ELSEIF so_cljo-low IS NOT INITIAL OR so_cljo-high IS NOT INITIAL.
+    " 상세 반제 데이터 조회
+    PERFORM get_detailed_clearing.
+    CALL SCREEN 0100.
+
+  ELSEIF so_cdone-low IS NOT INITIAL OR so_cdone-high IS NOT INITIAL.
+    " 반제 완료율
+    PERFORM get_cdone_data.
+
+  ELSEIF so_fperi-low IS NOT INITIAL OR so_fperi-high IS NOT INITIAL.
+    " 월별 반제 전표 집계
+    PERFORM get_monthly_summary.
+
+  ENDIF.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+
+*Text elements
+*----------------------------------------------------------
+* T01 기본 조회 조건
+* T02 반제 전표 조회 조건
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FYEAR         회계연도
+* SO_CDONE         월별 반제 완료율
+* SO_CLJO         반제 전표번호
+* SO_FPERI         회계기간
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*039   서치헬프에 있는 반제 전표번호만 입력 가능합니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

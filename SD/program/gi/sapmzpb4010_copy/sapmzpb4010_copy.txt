@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       SAPMZPB4010
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+
+INCLUDE mzpb4010_copytop.
+*INCLUDE mzpb4010top                             .    " global Data
+
+INCLUDE mzpb4010_copyo01.
+*INCLUDE mzpb4010o01                             .  " PBO-Modules
+INCLUDE mzpb4010_copyi01.
+*INCLUDE mzpb4010i01                             .  " PAI-Modules
+INCLUDE mzpb4010_copyf01.
+*INCLUDE mzpb4010f01                             .  " FORM-Routines
+INCLUDE mzpb4010_copyc01.
+*INCLUDE mzpb4010c01.
+
+LOAD-OF-PROGRAM.
+  PERFORM set_default.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> [SD] 출고 및 출고문서 생성 프로그램
+* T103 --> 출고 생성 팝업
+* T200 --> 출고문서 상세조회
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*001   & & & & 일치하는 정보가 없습니다.
+*003   & 할 &을(를) 선택하세요.
+*004   한 건만 & 가능합니다.
+*008   & 정보가 없습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

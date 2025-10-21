@@ -1,0 +1,144 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB4050TOP                                       Module Pool      SAPMZPB4050
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb4050.
+
+*&---------------------------------------------------------------------*
+" Common
+*&---------------------------------------------------------------------*
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr TYPE sy-dynnr,
+      icon_o   TYPE icons-text,
+      icon_c   TYPE icons-text.
+
+*&---------------------------------------------------------------------*
+" DATA
+*&---------------------------------------------------------------------*
+" PO Header 조회
+DATA: BEGIN OF gs_list.
+    INCLUDE TYPE zspb5012.
+DATA: it_col TYPE lvc_t_scol,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+
+" 팝업창 PO Item
+DATA: gs_list_po_item TYPE zspb5014,
+      gt_list_po_item LIKE TABLE OF gs_list_po_item.
+
+*&---------------------------------------------------------------------*
+
+" 입고 저장
+DATA: gs_grh TYPE ztpbgrh,
+      gt_grh LIKE TABLE OF gs_grh.
+DATA: gs_gri TYPE ztpbgri,
+      gt_gri LIKE TABLE OF gs_gri.
+
+" 입고문서 ALV Header
+DATA: BEGIN OF gs_grdoc.
+    INCLUDE TYPE zspb5027.
+DATA: it_col TYPE lvc_t_scol,
+      color  TYPE c LENGTH 4,
+      END OF gs_grdoc,
+      gt_grdoc LIKE TABLE OF gs_grdoc.
+
+" 입고문서 상세조회 Header Structure
+DATA: gs_grdeh TYPE zspb5033,
+      gt_grdeh LIKE TABLE OF gs_grdeh.
+
+" 입고문서 상세조회 ALV Item
+DATA: gs_grdei TYPE zspb5034,
+      gt_grdei LIKE TABLE OF gs_grdei.
+
+*&---------------------------------------------------------------------*
+" PO키 / 입고키
+*&---------------------------------------------------------------------*
+DATA: gv_pokey TYPE ztpbpoh-ponum,
+      gv_grkey TYPE ztpbgrh-grnum.
+
+*&---------------------------------------------------------------------*
+* TABLES
+*&---------------------------------------------------------------------*
+" Condition
+TABLES: zspb5025.
+" Info
+TABLES: zspb5026.
+" Detail
+TABLES: zspb5022, zspb5023, zspb5033, zspb5034, zspb5036.
+" POP UP
+TABLES: zspb5037.
+
+" 상품 정보 Structure
+DATA gs_proin TYPE zspb5022.
+
+
+*&---------------------------------------------------------------------*
+* ALV
+*&---------------------------------------------------------------------*
+" ALV Components - PO Head
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+" ALV Components - PO Item
+DATA: go_con_po_item  TYPE REF TO cl_gui_custom_container,
+      go_alv_po_item  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_po_item TYPE lvc_s_layo,
+      gt_fcat_po_item TYPE lvc_t_fcat,
+      gs_fcat_po_item LIKE LINE OF gt_fcat_po_item,
+      gt_sort_po_item TYPE lvc_t_sort,
+      gs_sort_po_item LIKE LINE OF gt_sort_po_item.
+
+" ALV Components - GR Head
+DATA: go_con_gr_head  TYPE REF TO cl_gui_custom_container,
+      go_alv_gr_head  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_gr_head TYPE lvc_s_layo,
+      gt_fcat_gr_head TYPE lvc_t_fcat,
+      gs_fcat_gr_head LIKE LINE OF gt_fcat_gr_head,
+      gt_sort_gr_head TYPE lvc_t_sort,
+      gs_sort_gr_head LIKE LINE OF gt_sort_gr_head.
+
+" ALV Components - GR Item
+DATA: go_con_gr_item  TYPE REF TO cl_gui_custom_container,
+      go_alv_gr_item  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_gr_item TYPE lvc_s_layo,
+      gt_fcat_gr_item TYPE lvc_t_fcat,
+      gs_fcat_gr_item LIKE LINE OF gt_fcat_gr_item,
+      gt_sort_gr_item TYPE lvc_t_sort,
+      gs_sort_gr_item LIKE LINE OF gt_sort_gr_item.
+*&---------------------------------------------------------------------*
+" Tab Strip
+*&---------------------------------------------------------------------*
+CONTROLS mytab TYPE TABSTRIP.
+
+*&---------------------------------------------------------------------*
+*Event
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    " Double Click Event
+    CLASS-METHODS on_double_click
+                  FOR EVENT double_click OF cl_gui_alv_grid
+      IMPORTING e_column es_row_no.
+    " HotSpot Click Event
+    CLASS-METHODS handle_hotspot_click_po
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no.
+
+    " HotSpot Click Event
+    CLASS-METHODS handle_hotspot_click_gr
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no.
+
+    " HotSpot Click Event
+    CLASS-METHODS handle_hotspot_click_pronr
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no.
+ENDCLASS.
+
+DATA go_handler TYPE REF TO lcl_event_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

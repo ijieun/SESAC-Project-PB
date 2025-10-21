@@ -1,0 +1,957 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1021F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0100.
+  DATA: ls_layo TYPE lvc_s_layo,
+        lt_fcat TYPE lvc_t_fcat,
+        lt_sort TYPE lvc_t_sort.
+
+  PERFORM:
+           set_container      USING    go_con_0100
+                                       'CON',
+
+           set_grid           USING    go_grid_0100
+                                       go_con_0100,
+
+           set_layout         USING    'A'
+                              CHANGING ls_layo,
+
+           set_fieldcat       CHANGING lt_fcat,
+
+           set_sort           CHANGING lt_sort,
+
+           display_alv_0100   USING    ls_layo
+                                       gt_list
+                                       lt_fcat
+                                       lt_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV_0200
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0200.
+  DATA: ls_layo TYPE lvc_s_layo,
+        lt_fcat TYPE lvc_t_fcat,
+        lt_sort TYPE lvc_t_sort.
+
+  PERFORM:
+           set_container    USING    go_con_0200
+                                     'CON_INSERT',
+
+           set_grid         USING    go_grid_0200
+                                     go_con_0200,
+
+           set_layout       USING    ''
+                            CHANGING ls_layo,
+
+           set_fieldcat     CHANGING lt_fcat,
+
+           set_sort         CHANGING lt_sort,
+
+           display_alv_0200 USING    ls_layo
+                                     lt_fcat
+                                     lt_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV_0300
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0300 .
+  DATA: ls_layo TYPE lvc_s_layo,
+        lt_fcat TYPE lvc_t_fcat,
+        lt_sort TYPE lvc_t_sort.
+
+  PERFORM:
+           set_container    USING    go_con_0300
+                                     'CON_UPDATE',
+
+           set_grid         USING    go_grid_0300
+                                     go_con_0300,
+
+           set_layout       USING    ''
+                            CHANGING ls_layo,
+
+           set_fieldcat     CHANGING lt_fcat,
+
+           set_sort         CHANGING lt_sort,
+
+           display_alv_0300 USING    ls_layo
+                                     lt_fcat
+                                     lt_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_CONTAINER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_container USING po_con TYPE REF TO cl_gui_custom_container
+                         VALUE(p_conname).
+  CREATE OBJECT po_con
+    EXPORTING
+*     parent                      =
+      container_name              = p_conname " 'CON'
+*     style                       =
+*     lifetime                    = lifetime_default
+*     repid                       =
+*     dynnr                       =
+*     no_autodef_progid_dynnr     =
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GRID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_grid USING po_grid TYPE REF TO cl_gui_alv_grid
+                    po_con  TYPE REF TO cl_gui_custom_container.
+  CREATE OBJECT po_grid
+    EXPORTING
+*     i_shellstyle      = 0
+*     i_lifetime        =
+      i_parent          = po_con
+*     i_appl_events     = space
+*     i_parentdbg       =
+*     i_applogparent    =
+*     i_graphicsparent  =
+*     i_name            =
+*     i_fcat_complete   = SPACE
+    EXCEPTIONS
+      error_cntl_create = 1
+      error_cntl_init   = 2
+      error_cntl_link   = 3
+      error_dp_create   = 4
+      OTHERS            = 5.
+  IF sy-subrc <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layout USING VALUE(p_selmode)
+                   CHANGING ps_layo TYPE lvc_s_layo.
+  CLEAR ps_layo.
+  ps_layo-cwidth_opt = 'A'.
+  ps_layo-zebra      = 'X'.
+  ps_layo-sel_mode   = p_selmode.
+  ps_layo-info_fname = 'LCOLOR'.
+  ps_layo-ctab_fname = 'LT_COL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FIELDCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fieldcat CHANGING pt_fcat TYPE lvc_t_fcat.
+  DATA: ls_fcat TYPE lvc_s_fcat.
+
+  PERFORM set_fcat: USING 'FIELDNAME' 'LGORT' ''
+                    CHANGING pt_fcat ls_fcat,
+                    USING 'COL_POS' '2' 'X'
+                    CHANGING pt_fcat ls_fcat,
+
+                    USING 'FIELDNAME' 'PLANT' ''
+                    CHANGING pt_fcat ls_fcat,
+                    USING 'COL_POS' '1' 'X'
+                    CHANGING pt_fcat ls_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat USING VALUE(p_field)
+                    VALUE(p_value)
+                    VALUE(p_end)
+              CHANGING pt_fcat TYPE lvc_t_fcat
+                       ps_fcat TYPE lvc_s_fcat.
+  CASE p_field.
+    WHEN 'FIELDNAME'.
+      ps_fcat-fieldname = p_value.
+    WHEN 'COL_POS'.
+      ps_fcat-col_pos   = p_value.
+
+  ENDCASE.
+
+  IF p_end EQ 'X'.
+    APPEND ps_fcat TO pt_fcat.
+    CLEAR ps_fcat.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort CHANGING pt_sort TYPE lvc_t_sort.
+  DATA: ls_sort TYPE lvc_s_sort.
+
+  PERFORM set_sort_: USING 'FIELDNAME' 'PLANT' ''
+                     CHANGING pt_sort ls_sort,
+                     USING 'SPOS' '1' ''
+                     CHANGING pt_sort ls_sort,
+                     USING 'UP' 'X' 'X'
+                     CHANGING pt_sort ls_sort,
+
+                     USING 'FIELDNAME' 'LGORT' ''
+                     CHANGING pt_sort ls_sort,
+                     USING 'SPOS' '1' ''
+                     CHANGING pt_sort ls_sort,
+                     USING 'UP' 'X' 'X'
+                     CHANGING pt_sort ls_sort.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT_
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort_   USING VALUE(p_field)
+                       VALUE(p_value)
+                       VALUE(p_end)
+              CHANGING pt_sort TYPE lvc_t_sort
+                       ps_sort TYPE lvc_s_sort.
+  CASE p_field.
+    WHEN 'FIELDNAME'.
+      ps_sort-fieldname = p_value.
+    WHEN 'SPOS'.
+      ps_sort-spos      = p_value.
+    WHEN 'UP'.
+      ps_sort-up        = p_value.
+  ENDCASE.
+
+  IF p_end EQ 'X'.
+    APPEND ps_sort TO pt_sort.
+    CLEAR ps_sort.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv_0100 USING ps_layo TYPE lvc_s_layo
+                            pt_list
+                            pt_fcat TYPE lvc_t_fcat
+                            pt_sort TYPE lvc_t_sort.
+
+  CALL METHOD go_grid_0100->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active               =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name              = 'ZSPB2102'
+*     is_variant                    =
+*     i_save                        =
+*     i_default                     = 'X'
+      is_layout                     = ps_layo
+*     is_print                      =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink                  =
+*     it_alv_graphics               =
+*     it_except_qinfo               =
+*     ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_list
+      it_fieldcatalog               = pt_fcat
+      it_sort                       = pt_sort
+*     it_filter                     =
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV_0200
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv_0200 USING ps_layo TYPE lvc_s_layo
+                            pt_fcat TYPE lvc_t_fcat
+                            pt_sort TYPE lvc_t_sort.
+
+  CALL METHOD go_grid_0200->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active               =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name              = 'ZSPB2102'
+*     is_variant                    =
+*     i_save                        =
+*     i_default                     = 'X'
+      is_layout                     = ps_layo
+*     is_print                      =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink                  =
+*     it_alv_graphics               =
+*     it_except_qinfo               =
+*     ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_insert
+      it_fieldcatalog               = pt_fcat
+      it_sort                       = pt_sort
+*     it_filter                     =
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV_0300
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv_0300 USING ps_layo TYPE lvc_s_layo
+                            pt_fcat TYPE lvc_t_fcat
+                            pt_sort TYPE lvc_t_sort.
+
+  CALL METHOD go_grid_0300->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active               =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+      i_structure_name              = 'ZSPB2102'
+*     is_variant                    =
+*     i_save                        =
+*     i_default                     = 'X'
+      is_layout                     = ps_layo
+*     is_print                      =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink                  =
+*     it_alv_graphics               =
+*     it_except_qinfo               =
+*     ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_insert
+      it_fieldcatalog               = pt_fcat
+      it_sort                       = pt_sort
+*     it_filter                     =
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LGORT_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_plant_range CHANGING p_subrc.
+  CLEAR gr_plant.
+  IF zspb2101-lplnt IS NOT INITIAL AND
+     zspb2101-hplnt IS NOT INITIAL.
+    IF zspb2101-lplnt > zspb2101-hplnt.
+      MESSAGE i000(zmcpb) WITH '하한값이 상한값보다 큽니다.'(t05).
+      p_subrc = 4.
+      RETURN.
+
+    ELSE.
+      gr_plant-sign = 'I'.
+      gr_plant-option = 'BT'.
+      gr_plant-low = zspb2101-lplnt.
+      gr_plant-high = zspb2101-hplnt.
+      APPEND gr_plant.
+    ENDIF.
+
+  ELSEIF zspb2101-lplnt IS NOT INITIAL.
+    gr_plant-sign = 'I'.
+    gr_plant-option = 'EQ'.
+    gr_plant-low = zspb2101-lplnt.
+    APPEND gr_plant.
+
+  ELSEIF zspb2101-hplnt IS NOT INITIAL.
+    gr_plant-sign = 'I'.
+    gr_plant-option = 'EQ'.
+    gr_plant-low = zspb2101-hplnt.
+    APPEND gr_plant.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LGORT_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_lgort_range CHANGING p_subrc.
+  CLEAR gr_lgort.
+  IF zspb2101-llgrt IS NOT INITIAL AND
+     zspb2101-hlgrt IS NOT INITIAL.
+    IF zspb2101-llgrt > zspb2101-hlgrt.
+      MESSAGE i000(zmcpb) WITH '하한값이 상한값보다 큽니다.'(t05).
+      p_subrc = 4.
+      RETURN.
+
+    ELSE.
+      gr_lgort-sign = 'E'.
+      gr_lgort-option = 'BT'.
+      gr_lgort-low = zspb2101-llgrt.
+      gr_lgort-high = zspb2101-hlgrt.
+      APPEND gr_lgort.
+    ENDIF.
+
+  ELSEIF zspb2101-llgrt IS NOT INITIAL.
+    gr_lgort-sign = 'E'.
+    gr_lgort-option = 'EQ'.
+    gr_lgort-low = zspb2101-llgrt.
+    APPEND gr_lgort.
+
+  ELSEIF zspb2101-hlgrt IS NOT INITIAL.
+    gr_lgort-sign = 'E'.
+    gr_lgort-option = 'EQ'.
+    gr_lgort-low = zspb2101-hlgrt.
+    APPEND gr_lgort.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_LGORT_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_lgort_list .
+  SELECT a~plant
+         b~lgort
+         b~sname
+    FROM ztpbplant AS a LEFT OUTER JOIN ztpbstorage AS b
+                                    ON a~plant EQ b~plant
+    INTO CORRESPONDING FIELDS OF TABLE gt_list
+   WHERE a~plant IN gr_plant[].
+
+  IF gt_list IS INITIAL.
+    " & & & & 일치하는 정보가 없습니다.
+    MESSAGE i001(zmcpb) WITH gr_plant-low gr_plant-high.
+    RETURN.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DELETE_LGORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM delete_lgort .
+  IF zspb2101-llgrt IS NOT INITIAL AND
+     zspb2101-hlgrt IS NOT INITIAL.
+    DELETE gt_list WHERE lgort IN gr_lgort.
+
+  ELSEIF zspb2101-llgrt IS NOT INITIAL.
+    DELETE gt_list WHERE lgort IN gr_lgort.
+
+  ELSEIF zspb2101-hlgrt IS NOT INITIAL.
+    DELETE gt_list WHERE lgort IN gr_lgort.
+
+  ENDIF.
+
+  IF gt_list IS INITIAL.
+    " & & & & 일치하는 정보가 없습니다.
+    MESSAGE i001(zmcpb) WITH gr_plant-low gr_plant-high gr_lgort-low gr_lgort-high.
+    RETURN.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECT_ROW
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_ZSPB2104  text
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM get_select_row USING VALUE(p_msg1)  TYPE string
+                          VALUE(p_msg2)  TYPE string
+                          VALUE(p_msg3)  TYPE string
+                       CHANGING ps_list TYPE zspb2104
+                                p_subrc.
+  DATA: lt_row   TYPE lvc_t_row,
+        ls_row   LIKE LINE OF lt_row,
+        lv_lines TYPE i.
+
+  CALL METHOD go_grid_0100->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_row.
+
+  DESCRIBE TABLE lt_row LINES lv_lines.
+
+  IF lt_row IS INITIAL.
+    MESSAGE i003(zmcpb) WITH p_msg1 p_msg2. " & 할 &을(를) 선택하세요.
+    p_subrc = 4.
+    RETURN.
+
+  ELSEIF lv_lines > 1.
+    MESSAGE i004(zmcpb) WITH p_msg3.
+    p_subrc = 4.
+    RETURN.
+
+  ENDIF.
+
+  LOOP AT lt_row INTO ls_row.
+    READ TABLE gt_list INTO gs_list INDEX ls_row-index.
+    MOVE-CORRESPONDING gs_list TO ps_list.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INPUT_CHECK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM input_check USING VALUE(p_lgort) TYPE ztpbstorage-lgort
+                       VALUE(p_sname) TYPE ztpbstorage-sname
+                    CHANGING p_subrc.
+  IF p_lgort IS INITIAL OR
+     p_sname IS INITIAL.
+    " & 정보를 모두 입력해주세요.
+    MESSAGE i007(zmcpb) WITH '스토리지'(t06).
+    p_subrc = 4.
+    RETURN.
+
+  ENDIF.
+
+  IF p_lgort+0(1) NE 'L'.
+    MESSAGE i000(zmcpb) WITH '첫 번째 문자는 L 이어야 합니다.'(t07).
+    p_subrc = 4.
+    RETURN.
+
+  ENDIF.
+
+  IF p_lgort+1(3) CO '0123456789'.
+
+  ELSE.
+    MESSAGE i000(zmcpb) WITH '뒤 3자리는 숫자여야 합니다.'(t08).
+    p_subrc = 4.
+    RETURN.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_LGORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM insert_lgort .
+  DATA: ls_data TYPE ztpbstorage,
+        ls_list LIKE LINE OF gt_list.
+
+  SELECT SINGLE lgort plant sname
+           FROM ztpbstorage
+           INTO CORRESPONDING FIELDS OF ls_list
+          WHERE plant EQ zspb2103-plant
+            AND lgort EQ zspb2103-lgort.
+  IF sy-subrc EQ 0.
+    " & 이미 존재하는 & 입니다.
+    MESSAGE i006(zmcpb) WITH '' '스토리지'.
+    RETURN.
+
+  ENDIF.
+
+  MOVE-CORRESPONDING zspb2103 TO ls_data.
+  INSERT INTO ztpbstorage VALUES ls_data.
+  IF sy-subrc <> 0.
+    MESSAGE i018(zmcpb). " 저장실패
+    RETURN.
+
+  ENDIF.
+*  MESSAGE i017(zmcpb). " 저장성공
+  COMMIT WORK.
+
+  CLEAR: gs_list-lcolor, gs_list-lt_col.
+  MODIFY gt_list FROM gs_list TRANSPORTING lcolor WHERE lcolor IS NOT INITIAL.
+  MODIFY gt_list FROM gs_list TRANSPORTING lt_col WHERE lt_col IS NOT INITIAL.
+
+  MOVE-CORRESPONDING zspb2103 TO gs_list.
+  gs_list-lcolor = 'C300'.
+
+  " 읽어서 LGORT가 없으면 MODIFY 있으면 APPEND.
+  READ TABLE gt_list TRANSPORTING NO FIELDS WITH KEY plant = zspb2103-plant
+                                                     lgort = ''.
+  IF sy-subrc EQ 0.
+    MODIFY gt_list FROM gs_list INDEX sy-tabix.
+
+  ELSE.
+    APPEND gs_list TO gt_list.
+
+  ENDIF.
+
+  MESSAGE i017(zmcpb). " 저장성공
+
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  UPDATE_LGORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM update_lgort .
+  DATA: ls_data TYPE ztpbstorage.
+
+  IF gs_before EQ zspb2104.
+    " & 정보가 없습니다.
+    MESSAGE i008(zmcpb) WITH '수정된'(t09).
+    RETURN.
+
+  ENDIF.
+
+  SELECT SINGLE plant lgort sname
+           FROM ztpbstorage
+           INTO CORRESPONDING FIELDS OF gs_list
+          WHERE plant EQ zspb2104-plant
+            AND lgort EQ zspb2104-lgort
+            AND sname EQ zspb2104-sname.
+  IF sy-subrc EQ 0.
+    " & 이미 존재하는 & 입니다.
+    MESSAGE i006(zmcpb) WITH '' '스토리지 로케이션'(t10).
+    RETURN.
+
+  ENDIF.
+
+  MOVE-CORRESPONDING zspb2104 TO ls_data.
+  UPDATE ztpbstorage SET   lgort = ls_data-lgort
+                           sname = ls_data-sname
+                     WHERE plant EQ ls_data-plant
+                       AND lgort EQ gs_before-lgort.
+
+  IF sy-subrc <> 0.
+    MESSAGE i018(zmcpb). " 저장실패
+    RETURN.
+
+  ENDIF.
+
+  MODIFY gt_list FROM gs_list TRANSPORTING lcolor WHERE lcolor IS NOT INITIAL.
+  MODIFY gt_list FROM gs_list TRANSPORTING lt_col WHERE lt_col IS NOT INITIAL.
+
+  LOOP AT gt_list INTO gs_list.
+    IF gs_list-plant EQ ls_data-plant AND
+       gs_list-lgort EQ gs_before-lgort.
+      gs_list-lgort = ls_data-lgort.
+      gs_list-sname = ls_data-sname.
+      gs_col-fname = 'LGORT'.
+      gs_col-color-col = '3'.
+      gs_col-color-int = '0'.
+      gs_col-color-inv = '0'.
+      APPEND gs_col TO gs_list-lt_col.
+
+      gs_list-lgort = ls_data-lgort.
+      gs_list-sname = ls_data-sname.
+      gs_col-fname = 'SNAME'.
+      gs_col-color-col = '3'.
+      gs_col-color-int = '0'.
+      gs_col-color-inv = '0'.
+      APPEND gs_col TO gs_list-lt_col.
+
+      MODIFY gt_list FROM gs_list.
+
+    ENDIF.
+
+  ENDLOOP.
+
+  MESSAGE i017(zmcpb). " 저장성공
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_PLANT_LGORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_plant_lgort USING VALUE(p_plant) TYPE zspb2102-plant.
+  SELECT plant lgort sname
+    FROM ztpbstorage
+    INTO CORRESPONDING FIELDS OF TABLE gt_insert
+   WHERE plant EQ p_plant.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+  PERFORM set_default_input.
+  PERFORM select_lgort_list.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default_input .
+  IF zspb2101-lplnt IS INITIAL AND
+     zspb2101-hplnt IS INITIAL.
+    zspb2101-lplnt = 'P001'.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INPUT_SEARCH_CHECK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM input_search_check USING VALUE(p_lgort) TYPE zspb2102-lgort
+                           CHANGING p_subrc.
+  IF p_lgort IS NOT INITIAL.
+    IF p_lgort+0(1) NE 'L'.
+      MESSAGE i000(zmcpb) WITH '첫 번째 문자는 L 이어야 합니다.'(t07).
+      p_subrc = 4.
+      RETURN.
+
+    ENDIF.
+
+    IF p_lgort+1(3) CO '0123456789'.
+
+    ELSE.
+      MESSAGE i000(zmcpb) WITH '뒤 3자리는 숫자여야 합니다.'(t08).
+      p_subrc = 4.
+      RETURN.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_excel_data .
+  DATA: lt_excel TYPE TABLE OF alsmex_tabline,
+        ls_excel LIKE LINE OF lt_excel.
+
+  CLEAR lt_excel.
+  IF gv_file IS NOT INITIAL.
+    CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+      EXPORTING
+        filename                = gv_file
+        i_begin_col             = 1     "Start column
+        i_begin_row             = 2     "Start row( 1 Row Column Name )
+        i_end_col               = 10    "max Field
+        i_end_row               = 1000  "max row
+      TABLES
+        intern                  = lt_excel
+      EXCEPTIONS
+        inconsistent_parameters = 1
+        upload_ole              = 2
+        OTHERS                  = 3.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+  ELSE.
+    MESSAGE i000(zmcpb) WITH '엑셀 파일을 선택해주세요.'.
+    RETURN.
+
+  ENDIF.
+
+  LOOP AT lt_excel INTO ls_excel.
+    CASE ls_excel-col.
+      WHEN '1'.
+        gs_data-plant = ls_excel-value.
+      WHEN '2'.
+        gs_data-lgort = ls_excel-value.
+      WHEN '3'.
+        gs_data-sname = ls_excel-value.
+    ENDCASE.
+
+    AT END OF row.
+      APPEND gs_data TO gt_data.
+      CLEAR gs_data.
+    ENDAT.
+    CLEAR ls_excel.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM bdc .
+  DATA: ls_list LIKE LINE OF gt_list.
+
+  LOOP AT gt_data INTO gs_data.
+    CLEAR: gt_bdc, gs_bdc.
+    gs_bdc-program = 'SAPMZPB1021_COPY'. "Program Name
+    gs_bdc-dynpro = '0100'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=INSERT'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-program = 'SAPMZPB1021_COPY'. "Program Name
+    gs_bdc-dynpro = '0200'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=INSERT'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB2103-PLANT'. "Screen Element Name
+    gs_bdc-fval = gs_data-plant. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB2103-LGORT'. "Screen Element Name
+    gs_bdc-fval = gs_data-lgort. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB2103-SNAME'. "Screen Element Name
+    gs_bdc-fval = gs_data-sname. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CALL TRANSACTION 'ZPB1021C'
+    USING gt_bdc MODE 'N'. "A, E, N
+
+    MOVE-CORRESPONDING gs_data TO ls_list.
+    APPEND ls_list TO gt_list.
+
+  ENDLOOP.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

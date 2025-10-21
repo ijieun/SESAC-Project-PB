@@ -1,0 +1,128 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2024O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH '[MM-SD]송장 승인 및 취소 프로그램'(t01).
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_CONDITION_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_condition_0100 OUTPUT.
+  CLEAR gv_dynnr.
+  CASE zspb2011-itype.
+    WHEN 'P'.
+      gv_dynnr = '0101'.
+
+    WHEN 'R'.
+      gv_dynnr = '0102'.
+
+    WHEN OTHERS.
+      gv_dynnr = '0103'.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF go_con_0100 IS INITIAL.
+    PERFORM: init_alv      USING    go_con_0100
+                                    go_alv_0100
+                                    'CON_0100',
+
+             req_event_for_alv,
+
+             set_layout_h  USING    'A'
+                                    'LIGHT'
+                                    'X'
+                                    '송장 리스트'(t02)
+                           CHANGING gs_layo_h,
+
+             set_fcat_h    USING    'ZSPB2012'
+                           CHANGING gt_fcat_h,
+
+             display_alv   USING    go_alv_0100
+                                    ''
+                                    gs_layo_h
+                                    gt_fcat_h
+                                    gt_list_h.
+  ELSE.
+    IF ok_code EQ 'SEARCH'.
+      PERFORM set_fcat_h     USING    'ZSPB2012'
+                             CHANGING gt_fcat_h.
+    ENDIF.
+
+    PERFORM refresh_alv        USING     go_alv_0100
+                                         gs_layo_h
+                                         gt_fcat_h.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0110 OUTPUT.
+  SET PF-STATUS 'S110'.
+  SET TITLEBAR 'T110' WITH '송장 아이템 정보'(t03) gs_list_h-invno.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0110 OUTPUT.
+  IF go_con_0110 IS INITIAL.
+    PERFORM: init_alv       USING    go_con_0110
+                                     go_alv_0110
+                                     'CON_0110',
+
+             set_layout_i   CHANGING gs_layo_i,
+
+             set_fcat_popup USING    'ZSPB2012_1'
+                            CHANGING gt_fcat_i,
+
+             display_alv    USING    go_alv_0110
+                                     ''
+                                     gs_layo_i
+                                     gt_fcat_i
+                                     gt_list_i.
+  ELSE.
+    PERFORM set_fcat_popup USING    'ZSPB2012_1'
+                           CHANGING gt_fcat_i.
+
+    PERFORM refresh_alv     USING    go_alv_0110
+                                     gs_layo_i
+                                     gt_fcat_i.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+  SET PF-STATUS 'S200'.
+  SET TITLEBAR 'T200' WITH '송장 상태 안내'(t04).
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

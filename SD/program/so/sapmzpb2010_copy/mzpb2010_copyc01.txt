@@ -1,0 +1,68 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2010C01
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler IMPLEMENTATION.
+
+  METHOD on_toolbar.
+    DATA ls_button TYPE stb_button.
+
+    " 대기 버튼
+    CLEAR ls_button.
+    ls_button-function  = 'WAIT'.
+    ls_button-icon      = icon_led_yellow.
+    ls_button-text      = '대기'.
+    APPEND ls_button TO e_object->mt_toolbar.
+
+    " 승인 버튼
+    CLEAR ls_button.
+    ls_button-function  = 'RECEIVED'.
+    ls_button-icon      = icon_led_green.
+    ls_button-text      = '승인'.
+    APPEND ls_button TO e_object->mt_toolbar.
+
+    " 반려 버튼
+    CLEAR ls_button.
+    ls_button-function  = 'REJECT'.
+    ls_button-icon      = icon_led_red.
+    ls_button-text      = '반려'.
+    APPEND ls_button TO e_object->mt_toolbar.
+
+  ENDMETHOD.
+
+  METHOD on_user_command.
+    MOVE-CORRESPONDING gt_data TO gt_list. "버튼 누를때마다 복사
+
+    CASE e_ucomm.
+      WHEN 'RECEIVED'.
+        DELETE gt_list WHERE stats <> 'R'.
+
+      WHEN 'REJECT'.
+        DELETE gt_list WHERE stats <> 'X'.
+
+      WHEN 'WAIT'.
+        DELETE gt_list WHERE stats <> 'W'.
+    ENDCASE.
+
+    PERFORM set_light.
+
+    "새로고침
+    CALL METHOD go_alv->refresh_table_display
+      EXPORTING
+        is_stable = VALUE lvc_s_stbl( row = 'X' col = 'X' ).
+  ENDMETHOD.
+
+  METHOD handler_hotspot_click.
+    PERFORM hotspot_click USING e_row_id e_column_id.
+
+    " 강제 pai->pbo 타게
+    CALL METHOD cl_gui_cfw=>set_new_ok_code
+      EXPORTING
+        new_code = 'ENTER'.
+
+  ENDMETHOD.
+
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

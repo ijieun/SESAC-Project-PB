@@ -1,0 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       SAPMZPB2040
+*&
+*&---------------------------------------------------------------------*
+*& 전표 조회 & 수동 반제 프로그램 (최종)
+*&---------------------------------------------------------------------*
+
+
+INCLUDE MZPB2040TOP.
+*INCLUDE MZPB2040TTOP.
+*INCLUDE MZPB2040TOP.
+*INCLUDE MZPB2040TTOP.
+*INCLUDE MZPB2040TOP. " global Data
+INCLUDE MZPB2040C01.
+*INCLUDE MZPB2040TC01.
+*INCLUDE MZPB2040C01.
+*INCLUDE MZPB2040TC01.
+*INCLUDE MZPB2040C01. " class
+INCLUDE MZPB2040O01.
+*INCLUDE MZPB2040TO01.
+*INCLUDE MZPB2040O01.
+*INCLUDE MZPB2040TO01.
+*INCLUDE MZPB2040O01. " PBO-Modules
+INCLUDE MZPB2040I01.
+*INCLUDE MZPB2040TI01.
+*INCLUDE MZPB2040I01.
+*INCLUDE MZPB2040TI01.
+*INCLUDE MZPB2040I01. " PAI-Modules
+INCLUDE MZPB2040F01.
+*INCLUDE MZPB2040TF01.
+*INCLUDE MZPB2040F01.
+*INCLUDE MZPB2040TF01.
+*INCLUDE MZPB2040F01. " FORM-Routines
+
+LOAD-OF-PROGRAM.
+
+  PERFORM set_default.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+* T101 --> 전표 Line item Popup Screen
+* T200 --> 반제할 전표 상세조회
+* T300 --> Clearing
+* T400 --> 전표 상세조회
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   두 개의 전표 레코드를 선택하세요
+*
+* Message class: ZMCPB
+*000   & & & &
+*020   최소 한 개 이상의 체크박스를 선택해주세요.
+*021   새로운 번호를 생성할 수 없습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

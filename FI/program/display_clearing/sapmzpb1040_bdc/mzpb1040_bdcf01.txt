@@ -1,0 +1,738 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1040F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_ALV_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_alv_list .
+
+  CLEAR gt_list.
+
+  " 종료 계정과목번호가 시작 계정과목번호보다 작을 경우 - ok
+  IF rv_glacc-low IS NOT INITIAL AND rv_glacc-high IS NOT INITIAL AND rv_glacc-high < rv_glacc-low.
+    MESSAGE i000(zmcpb) WITH '입력 값의 범위가 잘못되었습니다.'
+                              '(종료 계정과목번호가 시작 계정과목번호보다 작습니다.)'.
+    RETURN.
+  ENDIF.
+
+  " 양쪽 범위 다 입력 + 계정유형 - ok
+  IF rv_glacc-low IS NOT INITIAL AND rv_glacc-high IS NOT INITIAL AND zspb4001-gtype IS NOT INITIAL.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE glacc BETWEEN rv_glacc-low AND rv_glacc-high
+        AND gtype = zspb4001-gtype.
+
+    " 범위만 입력 (계정유형 x) - ok
+  ELSEIF rv_glacc-low IS NOT INITIAL AND rv_glacc-high IS NOT INITIAL.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+     WHERE glacc BETWEEN rv_glacc-low AND rv_glacc-high.
+
+    " low값만 입력된 경우 (low 이상) - ok
+  ELSEIF rv_glacc-low IS NOT INITIAL.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE glacc >= rv_glacc-low.
+
+    " high값만 입력된 경우 (high 이하) - ok
+  ELSEIF rv_glacc-high IS NOT INITIAL.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE glacc <= rv_glacc-high.
+
+    " 계정유형만 입력 - ok
+  ELSEIF zspb4001-gtype IS NOT INITIAL.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE gtype = zspb4001-gtype.
+
+    " 둘 다 미입력 (전체 조회) - ok
+  ELSE.
+    SELECT glacc
+           gname
+           gtype
+           waers
+      FROM ztpbgla
+      INTO CORRESPONDING FIELDS OF TABLE gt_list.
+    CLEAR zspb4001-gtype_t.
+  ENDIF.
+
+
+  "계정유형에 존재하지 않는 계정과목번호 범위를 입력했을 경우 - ok
+  IF gt_list IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '조건에 해당하는 계정과목이 존재하지 않습니다.'.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+
+  zspb4002-waers = 'KRW'.
+  zspb4003-waers = 'KRW'.
+  zspb4004-waers = 'KRW'.
+
+  PERFORM set_layout.
+
+  gs_fcat-fieldname = 'GTYPE_T'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+  CLEAR gs_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv .
+  CREATE OBJECT go_con
+    EXPORTING
+      container_name              = 'CON'
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+    MESSAGE i999(zmcpb39) WITH 'Create Custom Container Error'.
+  ENDIF.
+
+  CREATE OBJECT go_alv
+    EXPORTING
+      i_parent          = go_con
+    EXCEPTIONS
+      error_cntl_create = 1
+      error_cntl_init   = 2
+      error_cntl_link   = 3
+      error_dp_create   = 4
+      OTHERS            = 5.
+  IF sy-subrc <> 0.
+    MESSAGE i999(zmcpb39) WITH 'Create Alv Error'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name              = 'ZSPB4001'
+      is_layout                     = gs_layo
+    CHANGING
+      it_outtab                     = gt_list
+      it_fieldcatalog               = gt_fcat
+      it_sort                       = gt_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layout .
+
+  gs_layo-zebra = 'X'.
+  gs_layo-cwidth_opt = 'X'.
+  gs_layo-sel_mode = 'A'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GTYPE_T
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_IV_GTYPE_T  text
+*      <--P_LS_GTYPE_T  text
+*----------------------------------------------------------------------*
+FORM get_gtype_t
+  USING VALUE(ps_gtype)
+  CHANGING ps_gtype_t TYPE zspb4001-gtype_t.
+
+  DATA: ls_domain  LIKE LINE OF gt_domain.
+
+  IF gt_domain IS INITIAL.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_GTYPE'
+      TABLES
+        values_tab      = gt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+      MESSAGE i000(zmcpb) WITH '계정유형명을 불러오는데 실패했습니다.'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  "domain text가 있는 field를 가져와야 됨
+  READ TABLE gt_domain WITH KEY domvalue_l = ps_gtype INTO ls_domain.
+  IF sy-subrc = 0.
+    ps_gtype_t = ls_domain-ddtext.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NGLACC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_nglacc .
+
+  PERFORM get_numberange.
+
+  gs_ztpbgla-glacc = gv_new_glacc.
+  gs_ztpbgla-gname = zspb4002-gname.
+  gs_ztpbgla-gtype = zspb4002-gtype.
+  gs_ztpbgla-waers = zspb4002-waers.
+
+*"loop로 추가해보기
+*LOOP AT gt_list INTO gs_list.
+*
+*    READ TABLE gt_list WITH KEY glacc = gs_list-glacc INTO gs_list.
+*    gs_data-ename = gs_emp-ename.
+*    gs_data-fname = gs_emp-fname.
+*
+*    MODIFY gt_data FROM gs_data.
+*    CLEAR gs_data.
+*
+*  ENDLOOP.
+
+*" 계정과목명 중복시 생성 제한
+*  IF zspb4002-gname = gs_list-gname.
+*    MESSAGE i000(zmcpb) WITH '이미 존재하는 계정과목명입니다.'.
+*    RETURN.
+*  ENDIF.
+
+  "공란일 시 생성 제한
+  IF zspb4002-gname IS INITIAL AND zspb4002-gtype IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '생성할 계정유형과 계정과목명을 입력해주세요.'.
+    RETURN.
+  ENDIF.
+
+  INSERT INTO ztpbgla VALUES gs_ztpbgla.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH  gs_ztpbgla-glacc gs_ztpbgla-gname '이미 존재하는 계정과목 번호입니다.'.
+    RETURN.
+  ENDIF.
+
+  COMMIT WORK.
+  MESSAGE i000(zmcpb) WITH  gs_ztpbgla-glacc gs_ztpbgla-gname '계정과목을 성공적으로 생성하였습니다.'.
+  PERFORM get_alv_list.
+  LEAVE TO SCREEN 0.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DETAIL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_detail .
+  PERFORM select_record.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE
+    glacc
+    gname
+    gtype
+    waers
+      FROM ztpbgla
+      INTO (zspb4004-glacc, zspb4004-gname, zspb4004-gtype , zspb4004-waers)
+      WHERE glacc = gs_list-glacc.
+
+  PERFORM get_gtype_t USING zspb4004-gtype "사용할 값 (변화x)
+                      CHANGING zspb4004-gtype_t.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_RECORD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_record .
+  DATA: lt_rows TYPE lvc_t_row,
+        ls_rows LIKE LINE OF lt_rows,
+        lv_cnt  TYPE sy-tabix.
+  CLEAR: gv_subrc, gs_list.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_rows
+*     et_row_no     =
+    .
+  DESCRIBE TABLE lt_rows LINES lv_cnt.
+  CASE lv_cnt.
+    WHEN '0'.
+      MESSAGE i000(zmcpb) WITH '하나의 레코드를 선택 해주세요.'.
+      "False
+      sy-subrc = 4.
+      RETURN.
+
+    WHEN '1'.
+
+      READ TABLE lt_rows INDEX 1 INTO ls_rows.
+      CLEAR gs_list.
+      READ TABLE gt_list INDEX ls_rows-index INTO gs_list.
+
+      IF sy-subrc <> 0.
+        RETURN.
+      ENDIF.
+
+    WHEN OTHERS.
+      MESSAGE i000(zmcpb) WITH '하나의 레코드만 선택 해주세요'.
+      "False
+      sy-subrc = 4.
+      RETURN.
+  ENDCASE.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NEW_GLACC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_new_glacc .
+
+  PERFORM select_record.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  SELECT SINGLE
+    glacc
+    gname
+    gtype
+    waers
+      FROM ztpbgla
+      INTO (zspb4003-glacc, zspb4003-gname, zspb4003-gtype , zspb4003-waers)
+      WHERE glacc = gs_list-glacc.
+
+  PERFORM get_gtype_t USING zspb4003-gtype "사용할 값 (변화x)
+                      CHANGING zspb4003-gtype_t.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHANGE_GLACC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+
+FORM change_glacc .
+
+  DATA gs_ztpbgla TYPE ztpbgla.
+
+  PERFORM get_gtype_t USING zspb4004-gtype "사용할 값 (변화x)
+                       CHANGING zspb4004-gtype_t.
+*  PERFORM check_nglacc_eq_ngtype.
+
+*  gs_ztpbgla-glacc  = zspb4003-nglacc.
+  gs_ztpbgla-gname  = zspb4003-ngname.
+*  gs_ztpbgla-gtype  = zspb4003-ngtype.
+*  gs_ztpbgla-waers  = zspb4003-waers.
+
+  IF zspb4003-ngname = zspb4003-gname.
+    MESSAGE i000(zmcpb) WITH '이미 존재하는 계정과목명입니다.'.
+    RETURN.
+  ENDIF.
+
+  UPDATE ztpbgla SET gname = gs_ztpbgla-gname
+    WHERE gname = zspb4003-gname.
+
+  IF sy-subrc <> 0.
+    ROLLBACK WORK.
+    MESSAGE i006(zmcpb) WITH gs_ztpbgla-gname gs_ztpbgla-gname.
+    RETURN.
+  ENDIF.
+
+  COMMIT WORK.
+  MESSAGE i000(zmcpb) WITH gs_ztpbgla-gname'(으)로 변경 되었습니다.'.
+  PERFORM get_alv_list.
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NUMBERANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_numberange .
+
+  CASE zspb4002-gtype.
+    WHEN 'A'.
+      gv_range_nr = '01'.
+    WHEN 'L'.   " 부채
+      gv_range_nr = '02'.
+    WHEN 'E'.   " 자본
+      gv_range_nr = '03'.
+    WHEN 'R'.   " 수익
+      gv_range_nr = '04'.
+    WHEN 'X'.   " 비용
+      gv_range_nr = '05'.
+    WHEN OTHERS.
+      RETURN.
+  ENDCASE.
+
+  " 번호 자동 생성
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = gv_range_nr
+      object      = 'ZNRPB4001'
+    IMPORTING
+      number      = gv_new_glacc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_NGLACC_EQ_NGTYPE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_nglacc_eq_ngtype .
+
+  CASE zspb4003-ngtype.
+    WHEN 'A'.
+      IF zspb4003-nglacc+0(1) EQ 1.
+      ELSE.
+        MESSAGE i000(zmcpb) WITH '계정유형 A는 계정과목번호 1로 시작해야 됩니다.'.
+        RETURN.
+      ENDIF.
+    WHEN 'L'.
+      IF zspb4003-nglacc+0(1) EQ 2.
+      ELSE.
+        MESSAGE i000(zmcpb) WITH '계정유형 L는 계정과목번호 2로 시작해야 됩니다.'.
+        RETURN.
+      ENDIF.
+    WHEN 'C'.
+      IF zspb4003-nglacc+0(1) EQ 3.
+      ELSE.
+        MESSAGE i000(zmcpb) WITH '계정유형 C는 계정과목번호 3으로 시작해야 됩니다.'.
+        RETURN.
+      ENDIF.
+    WHEN 'R'.
+      IF zspb4003-nglacc+0(1) EQ 4.
+      ELSE.
+        MESSAGE i000(zmcpb) WITH '계정유형 R은 계정과목번호 4로 시작해야 됩니다.'.
+        RETURN.
+      ENDIF.
+    WHEN 'X'.
+      IF zspb4003-nglacc+0(1) EQ 5.
+      ELSE.
+        MESSAGE i000(zmcpb) WITH '계정유형 X는 계정과목번호 5로 시작해야 됩니다.'.
+        RETURN.
+      ENDIF.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC_EXECUTE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM bdc_execute .
+
+  DATA: ls_list LIKE LINE OF gt_list.
+  LOOP AT gt_data INTO gs_data.
+
+    "/NSHDB에 레코딩 한 순서대로 반영을 해줘야되는 것
+    CLEAR: gt_bdc, gs_bdc.
+    gs_bdc-program = 'SAPMZPB1040_BDC'. "Program Name
+    gs_bdc-dynpro = '0100'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "SY-UCOMM
+    gs_bdc-fval = '=GINSERT'.   "SY-UCOMM Code Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR: gs_bdc.
+    gs_bdc-program = 'SAPMZPB1040_BDC'. "Program Name
+    gs_bdc-dynpro = '0200'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "SY-UCOMM
+    gs_bdc-fval = '=NGINSERT'.   "SY-UCOMM Code Value
+    APPEND gs_bdc TO gt_bdc.
+
+    " 계정유형 입력
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB4002-GTYPE'. "Screen Element Name
+    gs_bdc-fval = gs_data-gtype. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    " 계정과목명 입력
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB4002-GNAME'. "Screen Element Name
+    gs_bdc-fval = gs_data-gname. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CALL TRANSACTION 'ZPB1040_BDC' "T-Code
+    USING gt_bdc MODE 'N'. "A, E, N
+
+    IF sy-subrc <> 0.
+      MESSAGE i000(zmcpb) WITH 'BDC로 계정과목 생성을 실패하였습니다.'.
+    ELSE.
+      MESSAGE i000(zmcpb) WITH 'BDC로 계정과목 생성을 성공하였습니다.'.
+    ENDIF.
+
+    ls_list-glacc = gs_ztpbgla-glacc.
+    ls_list-waers = zspb4002-waers.
+    MOVE-CORRESPONDING gs_data TO ls_list.
+    APPEND ls_list TO gt_list.
+
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC_EXCEL_UPLOAD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*FORM bdc_excel_upload .
+*
+*  DATA: file_path   TYPE rlgrap-filename,
+*        wa_excel    TYPE alsmex_tabline,
+*        lv_gtype    TYPE string,
+*        lv_gname    TYPE string,
+*        lv_waers    TYPE string,
+*        current_row TYPE i.
+*
+*  file_path = 'C:\USERS\USER\DESKTOP\BDC 계정과목 데이터.XLSX'.
+*
+*  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+*    EXPORTING
+*      filename    = file_path
+*      i_begin_col = 1
+*      i_begin_row = 2
+*      i_end_col   = 3
+*      i_end_row   = 1000
+*    TABLES
+*      intern      = gt_excel.
+*
+*  CLEAR current_row.
+*  LOOP AT gt_excel INTO wa_excel.
+*
+*    IF current_row <> wa_excel-row.
+*      " 새로운 행이 시작될 때 BDC 구성 후 CALL TRANSACTION 실행
+*      IF current_row <> 0.
+*        " 이전 행 데이터로 BDC 만들고 실행
+*        PERFORM post_bdc USING lv_gtype lv_gname lv_waers.
+*      ENDIF.
+*      " 새 행 처리 준비
+*      lv_gtype = ''.
+*      lv_gname = ''.
+*      lv_waers = ''.
+*      current_row = wa_excel-row.
+*    ENDIF.
+*
+*    CASE wa_excel-col.
+*      WHEN 1. lv_gtype = wa_excel-value.
+*      WHEN 2. lv_gname = wa_excel-value.
+*      WHEN 3. lv_waers = wa_excel-value.
+*    ENDCASE.
+*
+*  ENDLOOP.
+*
+*  " 마지막 행 데이터도 처리
+*  PERFORM post_bdc USING lv_gtype lv_gname lv_waers.
+*
+*ENDFORM.
+
+FORM post_bdc USING p_gtype p_gname p_waers.
+  DATA: lt_bdc TYPE TABLE OF bdcdata,
+        ls_bdc TYPE bdcdata.
+
+  CLEAR lt_bdc.
+  ls_bdc-program  = 'SAPMZPB1040_BDC'.
+  ls_bdc-dynpro   = '0200'.
+  ls_bdc-dynbegin = 'X'.
+  APPEND ls_bdc TO lt_bdc.
+
+  CLEAR ls_bdc.
+  ls_bdc-fnam = 'ZSPB4002-GTYPE'.
+  ls_bdc-fval = p_gtype.
+  APPEND ls_bdc TO lt_bdc.
+
+  CLEAR ls_bdc.
+  ls_bdc-fnam = 'ZSPB4002-GNAME'.
+  ls_bdc-fval = p_gname.
+  APPEND ls_bdc TO lt_bdc.
+
+  CLEAR ls_bdc.
+  ls_bdc-fnam = 'ZSPB4002-WAERS'.
+  ls_bdc-fval = p_waers.
+  APPEND ls_bdc TO lt_bdc.
+
+  CLEAR ls_bdc.
+  ls_bdc-fnam = 'BDC_OKCODE'.
+  ls_bdc-fval = '=BDC'.
+  APPEND ls_bdc TO lt_bdc.
+
+  CALL TRANSACTION 'ZPB1040_BDC'
+    USING lt_bdc
+    MODE 'N'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_excel_data .
+  DATA: lt_excel TYPE TABLE OF alsmex_tabline,
+        ls_excel LIKE LINE OF lt_excel.
+
+  CLEAR lt_excel.
+  IF gv_file IS NOT INITIAL.
+    CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+      EXPORTING
+        filename                = gv_file
+        i_begin_col             = 1     "Start column
+        i_begin_row             = 2     "Start row( 1 Row Column Name )
+        i_end_col               = 10    "max Field
+        i_end_row               = 1000  "max row
+      TABLES
+        intern                  = lt_excel
+      EXCEPTIONS
+        inconsistent_parameters = 1
+        upload_ole              = 2
+        OTHERS                  = 3.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+  ELSE.
+    MESSAGE i000(zmcpb) WITH '엑셀 파일을 선택해주세요.'.
+    RETURN.
+
+  ENDIF.
+
+  LOOP AT lt_excel INTO ls_excel.
+    CASE ls_excel-col.
+      WHEN '1'.
+        gs_data-gtype = ls_excel-value.
+      WHEN '2'.
+        gs_data-gname = ls_excel-value.
+    ENDCASE.
+
+    AT END OF row.
+      APPEND gs_data TO gt_data.
+      CLEAR gs_data.
+    ENDAT.
+    CLEAR ls_excel.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_REFRESH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*FORM alv_refresh .
+*
+*  CALL METHOD go_alv->refresh_table_display
+*  EXPORTING
+*    is_stable      =
+**    i_soft_refresh =
+*  EXCEPTIONS
+*    finished       = 1
+*    others         = 2
+*    .
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+*
+*ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

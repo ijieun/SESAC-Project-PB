@@ -1,0 +1,471 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2031F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_JOURNAL_I
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_journal_i .
+
+  IF go_con_j IS INITIAL.
+
+    PERFORM: create_con USING go_con_j
+                              'CON_J',
+
+             create_grid USING go_grid_j
+                               go_con_j,
+
+             set_layo,
+
+             set_fcat USING 'ZSPB3011'
+                      CHANGING gt_fcat,
+             set_sort,
+
+             display_alv USING    go_grid_j
+                                  gs_layo
+                         CHANGING gt_journal_i
+                                  gt_fcat
+                                  gt_sort.
+
+  ENDIF.
+
+  PERFORM refresh_alv USING go_grid_j.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_REVERSE_I
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_reverse_i .
+
+  IF go_con_r IS INITIAL.
+
+    PERFORM: create_con USING go_con_r
+                              'CON_R',
+
+             create_grid USING go_grid_r
+                               go_con_r,
+
+             set_layo,
+             set_fcat USING 'ZSPB3011'
+                        CHANGING gt_fcat,
+             set_sort,
+
+             display_alv USING    go_grid_r
+                                  gs_layo
+                         CHANGING gt_reverse_i
+                                  gt_fcat
+                                  gt_sort.
+
+  ENDIF.
+
+  PERFORM refresh_alv USING go_grid_r.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_CON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_CON_J  text
+*----------------------------------------------------------------------*
+FORM create_con USING po_con TYPE REF TO cl_gui_custom_container
+                      VALUE(p_con).
+
+  CREATE OBJECT po_con
+    EXPORTING
+      container_name = p_con.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GRID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_GRID_J  text
+*      -->P_GO_CON_J  text
+*----------------------------------------------------------------------*
+FORM create_grid USING po_grid TYPE REF TO cl_gui_alv_grid
+                       po_con  TYPE REF TO cl_gui_custom_container.
+
+  CREATE OBJECT po_grid
+    EXPORTING
+      i_parent = po_con.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO_J
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo.
+
+  gs_layo-cwidth_opt = 'A'.
+  gs_layo-zebra = 'X'.
+  gs_layo-info_fname = 'ROW_COL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat USING    VALUE(ps_structure_name)
+              CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Invisible Fields
+      WHEN 'JOCUM'.
+        ls_fcat-no_out = 'X'.
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_GRID_J  text
+*      -->P_GS_LAYO_J  text
+*      <--P_GT_JOURNAL_I  text
+*      <--P_GT_FCAT_J  text
+*      <--P_GT_SORT_J  text
+*----------------------------------------------------------------------*
+FORM display_alv  USING    po_grid TYPE REF TO cl_gui_alv_grid
+                           ps_layo TYPE lvc_s_layo
+                  CHANGING ct_journal TYPE STANDARD TABLE
+                           ct_fcat TYPE lvc_t_fcat
+                           ct_sort TYPE lvc_t_sort.
+
+  CALL METHOD po_grid->set_table_for_first_display
+    EXPORTING
+      is_layout                     = ps_layo
+    CHANGING
+      it_outtab                     = ct_journal
+      it_fieldcatalog               = ct_fcat
+      it_sort                       = ct_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  REFRESH_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_GRID_J  text
+*----------------------------------------------------------------------*
+FORM refresh_alv USING po_grid TYPE REF TO cl_gui_alv_grid.
+
+  CALL METHOD po_grid->refresh_table_display
+*  EXPORTING
+*    is_stable      =
+*    i_soft_refresh =
+*  EXCEPTIONS
+*    finished       = 1
+*    others         = 2
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DATAS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_datas .
+
+  PERFORM set_journal_data.
+
+  PERFORM set_reverse_data.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_JOURNAL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_journal_data .
+
+  " 2040 프로그램의 스크린 100 ALV에서 선택한 열의 전표번호를 SET
+  " 여기서 GET
+  GET PARAMETER ID 'ZPB2031' FIELD gv_jocum.
+
+  " Test
+*  gv_jocum = 'J202500061'.
+
+  SELECT SINGLE *
+    FROM ztpbjonlh
+    INTO CORRESPONDING FIELDS OF gs_journal_h
+    WHERE jocum = gv_jocum.
+
+  SELECT *
+    FROM ztpbjonli
+    INTO CORRESPONDING FIELDS OF TABLE gt_journal_i
+    WHERE jocum = gv_jocum.
+
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  PERFORM get_domvalue USING 'ZDPB_JTYPE'
+                       CHANGING lt_domain.
+
+  READ TABLE lt_domain WITH KEY domvalue_l = gs_journal_h-jtype INTO ls_domain.
+  gs_journal_h-jtype_t = ls_domain-ddtext.
+  CLEAR: lt_domain, ls_domain.
+
+  PERFORM get_domvalue USING 'ZDPB_DTYPE'
+                       CHANGING lt_domain.
+
+  READ TABLE lt_domain WITH KEY domvalue_l = gs_journal_h-dtype INTO ls_domain.
+  gs_journal_h-dtype_t = ls_domain-ddtext.
+  CLEAR: lt_domain, ls_domain.
+
+  LOOP AT gt_journal_i INTO gs_journal_i.
+
+    SELECT SINGLE gname
+      FROM ztpbgla
+      INTO gs_journal_i-gname
+      WHERE glacc = gs_journal_i-glacc.
+
+    MODIFY gt_journal_i FROM gs_journal_i.
+    CLEAR gs_journal_i.
+
+  ENDLOOP.
+  CLEAR: lt_domain, ls_domain.
+
+  DATA ls_item LIKE LINE OF gt_journal_i.
+
+  READ TABLE gt_journal_i INDEX 2 INTO ls_item.
+  ls_item-row_col = 'C310'.
+  MODIFY gt_journal_i FROM ls_item INDEX 2.
+
+  PERFORM refresh_alv USING go_grid_j.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_REVERSE_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_reverse_data .
+
+  SELECT SINGLE *
+    FROM ztpbjonlh
+    INTO CORRESPONDING FIELDS OF gs_reverse_h
+    WHERE jocum = gv_jocum.
+
+  SELECT *
+    FROM ztpbjonli
+    INTO CORRESPONDING FIELDS OF TABLE gt_reverse_i
+    WHERE jocum = gv_jocum.
+
+  PERFORM refresh_alv USING go_grid_r.
+
+  gs_reverse_h-jtype = 'RE'.
+
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  PERFORM get_domvalue USING 'ZDPB_JTYPE'
+                       CHANGING lt_domain.
+
+  READ TABLE lt_domain WITH KEY domvalue_l = gs_reverse_h-jtype INTO ls_domain.
+  gs_reverse_h-jtype_t = ls_domain-ddtext.
+
+  PERFORM get_domvalue USING 'ZDPB_DTYPE'
+                       CHANGING lt_domain.
+
+  READ TABLE lt_domain WITH KEY domvalue_l = gs_reverse_h-dtype INTO ls_domain.
+  gs_reverse_h-dtype_t = ls_domain-ddtext.
+
+  LOOP AT gt_reverse_i INTO gs_reverse_i.
+
+    SELECT SINGLE gname
+      FROM ztpbgla
+      INTO gs_reverse_i-gname
+      WHERE glacc = gs_reverse_i-glacc.
+
+    MODIFY gt_reverse_i FROM gs_reverse_i.
+    CLEAR gs_reverse_i.
+
+  ENDLOOP.
+
+  DATA: ls_item1 LIKE LINE OF gt_reverse_i,
+        ls_item2 LIKE LINE OF gt_reverse_i.
+
+  READ TABLE gt_reverse_i INDEX 2 INTO ls_item1.
+  READ TABLE gt_reverse_i INDEX 1 INTO ls_item2.
+
+  ls_item1-row_col = 'C310'.
+
+  ls_item1-itnum = 1.
+  ls_item2-itnum = 2.
+
+  ls_item1-dbcrf = 'S'.
+  ls_item2-dbcrf = 'H'.
+
+  MODIFY gt_reverse_i FROM ls_item1 INDEX 1.
+  MODIFY gt_reverse_i FROM ls_item2 INDEX 2.
+
+  PERFORM refresh_alv USING go_grid_r.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NUMBER_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_LV_NUMR  text
+*----------------------------------------------------------------------*
+FORM get_number_range  CHANGING cv_numr.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr             = '01'
+      object                  = 'ZNRPB3003'
+    IMPORTING
+      number                  = cv_numr
+    EXCEPTIONS
+      interval_not_found      = 1
+      number_range_not_intern = 2
+      object_not_found        = 3
+      quantity_is_0           = 4
+      quantity_is_not_1       = 5
+      interval_overflow       = 6
+      buffer_overflow         = 7
+      OTHERS                  = 8.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  cv_numr = 'J' && cv_numr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_JOCUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_NUMR  text
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM check_jocum  USING    p_jocum
+                  CHANGING cv_subrc.
+
+  DATA lv_jocum.
+
+  SELECT SINGLE jocum
+   FROM ztpbjonlh
+   INTO lv_jocum
+   WHERE jocum = p_jocum.
+
+  IF sy-subrc = 0.
+    cv_subrc = 4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DOMVALUE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0295   text
+*      <--P_LT_DOMAIN  text
+*----------------------------------------------------------------------*
+FORM get_domvalue  USING    VALUE(p_domain)
+                   CHANGING ct_domain TYPE STANDARD TABLE.
+
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname         = p_domain
+    TABLES
+      values_tab      = ct_domain
+*     VALUES_DD07L    =
+    EXCEPTIONS
+      no_values_found = 1
+      OTHERS          = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_CFLAG
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_cflag .
+
+  CLEAR gv_subrc.
+
+  LOOP AT gt_reverse_i INTO DATA(ls_reverse_i).
+
+    IF ls_reverse_i-cflag = 'X'.
+      gv_subrc = 4.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

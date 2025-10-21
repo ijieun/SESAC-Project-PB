@@ -1,0 +1,2831 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2030F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv USING    po_con TYPE REF TO cl_gui_custom_container
+                         po_grid TYPE REF TO cl_gui_alv_grid
+                         pv_txt1
+                CHANGING cs_layo TYPE lvc_s_layo
+                         ct_alv TYPE STANDARD TABLE.
+
+  PERFORM: set_container USING  po_con
+                                pv_txt1,
+
+           set_grid      USING  po_grid
+                                po_con,
+
+           set_layout.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_CONTAINER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_container USING po_con TYPE REF TO cl_gui_custom_container
+                         VALUE(pv_conname).
+
+  CREATE OBJECT po_con
+    EXPORTING
+      container_name = pv_conname.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GRID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_grid USING po_grid TYPE REF TO cl_gui_alv_grid
+                    VALUE(po_con) TYPE REF TO cl_gui_custom_container.
+
+  CREATE OBJECT po_grid
+    EXPORTING
+      i_parent = po_con.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layout.
+
+  " 차/대변 선택 ALV
+  gs_layo-cwidth_opt = 'A'.
+  gs_layo-zebra = 'X'.
+  gs_layo-sel_mode = 'A'.
+
+  " 헤더 ALV
+  gs_layo2-cwidth_opt = 'A'.
+  gs_layo2-zebra = 'X'.
+  gs_layo2-sel_mode = 'A'.
+  gs_layo2-info_fname = 'ROW_COL'.
+  gs_layo2-ctab_fname = 'CEL_COL'.
+
+  " 아이템 ALV
+  gs_layo3-cwidth_opt = 'A'.
+  gs_layo3-zebra = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort CHANGING ct_sort TYPE lvc_t_sort.
+
+  DATA ls_sort TYPE lvc_s_sort.
+
+  LOOP AT ct_sort INTO ls_sort.
+
+    CASE ls_sort-fieldname.
+
+      WHEN 'PDATE'.
+        ls_sort-down = 'X'.
+
+    ENDCASE.
+
+    MODIFY ct_sort FROM ls_sort.
+    CLEAR ls_sort.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv USING    po_grid TYPE REF TO cl_gui_alv_grid
+                          VALUE(ps_layo)
+                 CHANGING ct_alvtab TYPE STANDARD TABLE
+                          ct_fcat TYPE lvc_t_fcat
+                          ct_sort TYPE lvc_t_sort.
+
+  CALL METHOD po_grid->set_table_for_first_display
+    EXPORTING
+      is_layout                     = ps_layo
+    CHANGING
+      it_outtab                     = ct_alvtab
+      it_fieldcatalog               = ct_fcat
+      it_sort                       = ct_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_REFRESH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM alv_refresh USING po_grid TYPE REF TO cl_gui_alv_grid.
+
+  DATA: ls_stbl TYPE lvc_s_stbl,
+        lt_rows TYPE lvc_t_row,
+        ls_rows LIKE LINE OF lt_rows.
+
+  ls_stbl-row = 'X'. "( row scroll Fix )
+  ls_stbl-col = 'X'. "( col scroll Fix )
+  po_grid->refresh_table_display( EXPORTING i_soft_refresh = 'X'
+                                            is_stable      = ls_stbl  ).
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ITEMNO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_0100_defualt .
+
+  DATA lv_num TYPE n VALUE 1.
+
+  CLEAR: gs_alv_0100, gt_alv_0100.
+
+  gs_alv_0100-itnum = lv_num.
+  gs_alv_0100-dbcrf = 'S'.
+  gs_alv_0100-dbcrf_t = '차변'.
+  APPEND gs_alv_0100 TO gt_alv_0100.
+  lv_num = lv_num + 1.
+  gs_alv_0100-itnum = lv_num.
+  gs_alv_0100-dbcrf = 'H'.
+  gs_alv_0100-dbcrf_t = '대변'.
+  APPEND gs_alv_0100 TO gt_alv_0100.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_REFDO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_refdo_input USING VALUE(p_refdo)
+                       CHANGING cv_subrc.
+
+  CLEAR cv_subrc.
+
+  IF p_refdo IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '참조문서를 선택하세요.'(c05). " & & & &
+    cv_subrc = 4.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DEFAULT_VALUES
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_values_from_alv CHANGING ct_alv TYPE STANDARD TABLE
+                                  ct_row TYPE lvc_t_roid
+                                  cs_row TYPE lvc_s_roid.
+
+  READ TABLE ct_row INDEX 1 INTO cs_row.
+  READ TABLE ct_alv INDEX cs_row-row_id INTO zspb3006.
+
+  zspb3006-price = zspb3008-tprice.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECTED_INFO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_selected_info USING    po_grid TYPE REF TO cl_gui_alv_grid
+                       CHANGING ct_row  TYPE lvc_t_roid.
+
+  CALL METHOD po_grid->get_selected_rows
+    IMPORTING
+      et_row_no = ct_row.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_ITEM_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_item_input USING VALUE(ps_zspb)
+                      CHANGING cv_subrc.
+
+  DATA: lv_empty_fld_idx TYPE i.
+
+  FIELD-SYMBOLS <fs_check> TYPE any.
+  CLEAR cv_subrc.
+
+  " 입력안된 필드 체크
+  DO.
+    ASSIGN COMPONENT sy-index OF STRUCTURE ps_zspb TO <fs_check>.
+
+    " 확인할 필드가 없으면 탈출
+    IF sy-subrc <> 0.
+      EXIT.
+    ENDIF.
+
+    IF <fs_check> IS INITIAL.
+
+      lv_empty_fld_idx = sy-index.
+
+      CASE lv_empty_fld_idx.
+        WHEN 1 OR 5 OR 7 OR 10 OR 11 OR 12 OR 13. " 전표번호 & 적요 & 반제여부 필드는 비어있어도 통과
+        WHEN OTHERS.
+          MESSAGE i009(zmcpb) WITH '부가설명을 제외한 아이템 정보를 모두'(c07). " & 입력해주세요.
+          cv_subrc = 4.
+          EXIT.
+      ENDCASE.
+
+    ENDIF.
+
+  ENDDO.
+
+  " 계정과목 번호 & 이름 일치 확인
+  DATA lv_gname TYPE zspb3006-gname.
+  SELECT SINGLE gname
+    FROM ztpbgla
+    INTO lv_gname
+    WHERE glacc = zspb3006-glacc.
+
+  IF lv_gname NE zspb3006-gname.
+    MESSAGE i000(zmcpb) WITH '계정번호와 이름이 일치하는지 확인하세요.'(c13). " & & & &
+    cv_subrc = 4.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+
+  CASE gv_dynnr.
+    WHEN 100.
+
+      zspb3005-waers = 'KRW'.
+*      zspb3005-fyear = sy-datum(4).
+*      zspb3005-fperi = sy-datum+4(2).
+*      zspb3005-pdate = sy-datum. " 전기일자
+
+*      PERFORM get_last_day_of_months CHANGING zspb3005-pdate.
+
+      gv_visible_tab = 'TAB_IV'.
+      ts_ref-activetab = 'TAB_IV'.
+      ts_ref_it-activetab = 'TAB_IT_IV'.
+      zspb3005-dtype = 'IV'.
+
+      CALL FUNCTION 'RP_CALC_DATE_IN_INTERVAL'
+        EXPORTING
+          date      = sy-datum
+          days      = 0
+          months    = 1
+          signum    = '-'
+          years     = 0
+        IMPORTING
+          calc_date = zspb3009-date1.
+
+      zspb3009-date2 = sy-datum.
+
+    WHEN 101.
+
+      zspb3006-waers = 'KRW'.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_input .
+
+  PERFORM check_header_input.
+  IF gv_subrc = 0.
+    PERFORM check_alv_input.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_HEADER_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_header_input .
+
+  DATA: ls_zspb          TYPE zspb3005,
+        lv_empty_fld_idx TYPE i.
+
+  FIELD-SYMBOLS <fs_check> TYPE any.
+  CLEAR gv_subrc.
+
+  " 입력 안한 필드 체크
+  DO.
+    ASSIGN COMPONENT sy-index OF STRUCTURE zspb3005 TO <fs_check>.
+
+    " 확인할 필드가 없으면 탈출
+    IF sy-subrc <> 0.
+      EXIT.
+    ENDIF.
+
+    IF <fs_check> IS INITIAL.
+
+      lv_empty_fld_idx = sy-index.
+
+      CASE lv_empty_fld_idx.
+        WHEN 1. " 전표번호 필드는 비어있어도 통과
+        WHEN OTHERS.
+          MESSAGE i009(zmcpb) WITH '헤더 정보를 모두'(c08). " & 입력해주세요.
+          gv_subrc = 4.
+          EXIT.
+      ENDCASE.
+
+    ENDIF.
+
+  ENDDO.
+
+  IF zspb3005-dtype NE zspb3005-refdo(2).
+*    MESSAGE i000(zmcpb) WITH '참조 문서의 타입과 번호가 일치하지 않습니다.'(c12). " & & & &
+*    gv_subrc = 4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_ALV_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_alv_input .
+
+  LOOP AT gt_alv_0100 INTO gs_alv_0100.
+
+    PERFORM check_item_input USING gs_alv_0100
+                             CHANGING gv_subrc.
+
+    IF gv_subrc <> 0.
+      EXIT.
+    ENDIF.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_BALANCE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_balance .
+
+  DATA: ls_debit  TYPE zspb3006,
+        ls_credit TYPE zspb3006.
+
+  READ TABLE gt_alv_0100 INDEX 1 INTO ls_debit.
+  READ TABLE gt_alv_0100 INDEX 2 INTO ls_credit.
+  gv_balance = ls_debit-price - ls_credit-price.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NUMBER_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_number_range CHANGING cv_numr.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr             = '01'
+      object                  = 'ZNRPB3003'
+    IMPORTING
+      number                  = cv_numr
+    EXCEPTIONS
+      interval_not_found      = 1
+      number_range_not_intern = 2
+      object_not_found        = 3
+      quantity_is_0           = 4
+      quantity_is_not_1       = 5
+      interval_overflow       = 6
+      buffer_overflow         = 7
+      OTHERS                  = 8.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  cv_numr = 'J' && cv_numr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_LAST_DAY_OF_MONTHS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_last_day_of_months CHANGING cv_date TYPE d.
+
+  CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+    EXPORTING
+      day_in            = sy-datum
+    IMPORTING
+      last_day_of_month = cv_date
+    EXCEPTIONS
+      day_in_no_date    = 1
+      OTHERS            = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_JOCUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_jocum USING    VALUE(p_jocum)
+                 CHANGING cv_subrc.
+
+  DATA lv_jocum.
+
+  SELECT SINGLE jocum
+    FROM ztpbjonlh
+    INTO lv_jocum
+    WHERE jocum = p_jocum.
+
+  IF sy-subrc = 0.
+    cv_subrc = 4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DETAIL_BUTTON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM details .
+
+  CLEAR zspb3008.
+
+  DATA: BEGIN OF ls_comp_header,
+          refdo TYPE zspb3008-refdo,
+          comnr TYPE zspb3008-comnr,
+          compt TYPE zspb3008-compt,
+        END OF ls_comp_header.
+
+  CASE zspb3005-dtype.
+    WHEN 'IV'.
+      PERFORM get_iv_data.
+    WHEN 'GR'.
+      PERFORM get_gr_data.
+    WHEN 'GI'.
+      PERFORM get_gi_data.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_IV_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_iv_data .
+
+  " 참조문서 헤더
+  SELECT SINGLE a~invno
+                a~vendr
+                b~vendt
+           FROM ztpbinvh AS a INNER JOIN ztpbvendor AS b ON a~vendr = b~vendr
+           INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+          WHERE a~invno = zspb3005-refdo.
+
+  IF sy-subrc <> 0.
+
+    SELECT SINGLE a~invno
+                  a~cusnr
+                  b~custt
+             FROM ztpbinvh AS a INNER JOIN ztpbcustom AS b ON a~cusnr = b~cusnr
+             INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+            WHERE a~invno = zspb3005-refdo.
+
+  ENDIF.
+
+  " 참조문서 아이템
+  SELECT *
+    FROM ztpbinvi
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0103
+    WHERE invno = zspb3005-refdo.
+
+  " 상품명 정보 담기
+  SELECT pronr
+         langu
+         pname
+    FROM ztpbproduct_t
+    INTO CORRESPONDING FIELDS OF TABLE gt_product.
+
+  DATA: ls_alv_0103 LIKE LINE OF gt_alv_0103,
+        lv_tprice   LIKE zspb3008-tprice,
+        lv_price    LIKE zspb3008-tprice.
+
+  LOOP AT gt_alv_0103 INTO ls_alv_0103.
+
+    " 상품명
+    READ TABLE gt_product WITH KEY pronr = ls_alv_0103-pronr
+                                   langu = sy-langu INTO gs_product.
+    ls_alv_0103-pname = gs_product-pname.
+
+    " 총 가격 계산
+    lv_price = ls_alv_0103-price * ls_alv_0103-poqty.
+    lv_tprice = lv_tprice + lv_price.
+
+    MODIFY gt_alv_0103 FROM ls_alv_0103.
+    CLEAR ls_alv_0103.
+
+  ENDLOOP.
+
+  zspb3008-tprice = lv_tprice.
+  zspb3008-waers = 'KRW'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_PO_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_po_data .
+
+  " 참조문서 헤더
+  SELECT SINGLE a~ponum
+                a~vendr
+                b~vendt
+           FROM ztpbpoh AS a INNER JOIN ztpbvendor AS b ON a~vendr = b~vendr
+           INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+          WHERE a~ponum = zspb3005-refdo.
+
+  " 참조문서 아이템
+  SELECT *
+    FROM ztpbpoi
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0105
+    WHERE ponum = zspb3005-refdo.
+
+  " 상품명 정보 담기
+  SELECT pronr
+         langu
+         pname
+    FROM ztpbproduct_t
+    INTO CORRESPONDING FIELDS OF TABLE gt_product.
+
+  DATA: ls_alv_0105 LIKE LINE OF gt_alv_0105,
+        lv_tprice   LIKE zspb3008-tprice,
+        lv_price    LIKE zspb3008-tprice.
+
+  LOOP AT gt_alv_0105 INTO ls_alv_0105.
+
+    " 상품명
+    READ TABLE gt_product WITH KEY pronr = ls_alv_0105-pronr
+                                   langu = sy-langu INTO gs_product.
+    ls_alv_0105-pronm = gs_product-pname.
+
+    " 총 가격 계산
+    lv_price = ls_alv_0105-price * ls_alv_0105-pgrqt.
+    lv_tprice = lv_tprice + lv_price.
+
+*    IF ls_alv_0105-pflag = 'X'.
+*      lv_tprice = lv_tprice - lv_price.
+*    ENDIF.
+
+    MODIFY gt_alv_0105 FROM ls_alv_0105.
+    CLEAR ls_alv_0105.
+
+  ENDLOOP.
+
+  zspb3008-tprice = lv_tprice.
+  zspb3008-waers = 'KRW'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SO_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_so_data .
+
+  " 참조문서 헤더
+  SELECT SINGLE a~sonum
+                a~cusnr
+                b~custt
+           FROM ztpbsoh AS a INNER JOIN ztpbcustom AS b ON a~cusnr = b~cusnr
+           INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+          WHERE a~sonum = zspb3005-refdo.
+
+  " 참조문서 아이템
+  SELECT *
+    FROM ztpbsoi
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0107
+    WHERE sonum = zspb3005-refdo.
+
+  " 상품명 정보 담기
+  SELECT pronr
+         langu
+         pname
+    FROM ztpbproduct_t
+    INTO CORRESPONDING FIELDS OF TABLE gt_product.
+
+  DATA: ls_alv_0107 LIKE LINE OF gt_alv_0107,
+        lv_tprice   LIKE zspb3008-tprice,
+        lv_price    LIKE zspb3008-tprice.
+
+  LOOP AT gt_alv_0107 INTO ls_alv_0107.
+
+    " 상품명
+    READ TABLE gt_product WITH KEY pronr = ls_alv_0107-pronr
+                                   langu = sy-langu INTO gs_product.
+    ls_alv_0107-pronm = gs_product-pname.
+
+    " 총 가격 계산
+    lv_price = ls_alv_0107-price * ls_alv_0107-pgiqt.
+    lv_tprice = lv_tprice + lv_price.
+
+    MODIFY gt_alv_0107 FROM ls_alv_0107.
+    CLEAR ls_alv_0107.
+
+  ENDLOOP.
+
+  zspb3008-tprice = lv_tprice.
+  zspb3008-waers = 'KRW'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_BP_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_bp_data .
+
+  IF gt_vendor IS INITIAL.
+    " 벤더사 테이블 정보 저장
+    SELECT vendr
+           vendt
+      FROM ztpbvendor
+      INTO CORRESPONDING FIELDS OF TABLE gt_vendor.
+
+  ENDIF.
+
+  IF  gt_custom IS INITIAL.
+    " 고객사 테이블 정보 저장
+    SELECT cusnr
+           custt
+      FROM ztpbcustom
+      INTO CORRESPONDING FIELDS OF TABLE gt_custom.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_TABSTRIP
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0307   text
+*      -->P_0308   text
+*      -->P_0309   text
+*----------------------------------------------------------------------*
+FORM set_tabstrip  USING    VALUE(p_headno)
+                            VALUE(p_itemno)
+                            VALUE(p_tab).
+
+  gv_subscreenh_no = p_headno.
+  gv_subscreeni_no = p_itemno.
+  gv_visible_tab = p_tab.
+  ts_ref-activetab = p_tab.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_REFDO_STATUS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_refdo_status .
+
+  CLEAR gv_subrc.
+
+  IF zspb3005-refdo IS INITIAL.
+
+    MESSAGE i000(zmcpb) WITH '참조문서를 입력하세요.'(c05). " & 입력해주세요.
+    gv_subrc = 4.
+
+  ENDIF.
+
+  CHECK gv_subrc IS INITIAL.
+
+  zspb3005-dtype = zspb3005-refdo(2).
+
+  CASE zspb3005-refdo(2).
+    WHEN 'IV'.
+
+      PERFORM get_iv_headers.
+
+      SELECT SINGLE pdate
+        FROM ztpbinvh
+        INTO zspb3005-tdate
+        WHERE invno = zspb3005-refdo.
+
+      " 송장 상태 체크
+      READ TABLE gt_alv_0102 WITH KEY invno = zspb3005-refdo INTO gs_alv_0102.
+      IF gs_alv_0102-iflag NE 'X'.
+        MESSAGE i000(zmcpb) WITH '전표를 생성할 수 없는 문서입니다.'(c18). " & & & &
+        gv_subrc = 4.
+        RETURN.
+      ENDIF.
+
+    WHEN 'GR'.
+
+      PERFORM get_gr_headers.
+
+      SELECT SINGLE stdat
+        FROM ztpbgrh
+        INTO zspb3005-tdate
+        WHERE grnum = zspb3005-refdo.
+
+      " GR 상태 체크
+      READ TABLE gt_alv_0104 WITH KEY grnum = zspb3005-refdo INTO gs_alv_0104.
+      IF gs_alv_0104-pstat NE 'C'.
+        MESSAGE i000(zmcpb) WITH '전표를 생성할 수 없는 문서입니다.'(c18). " & & & &
+        gv_subrc = 4.
+        RETURN.
+      ENDIF.
+
+    WHEN 'GI'.
+
+      PERFORM get_gi_headers.
+
+      SELECT SINGLE pgidt
+        FROM ztpbgih
+        INTO zspb3005-tdate
+        WHERE ginum = zspb3005-refdo.
+
+      " SO 상태 체크
+      READ TABLE gt_alv_0106 WITH KEY ginum = zspb3005-refdo INTO gs_alv_0106.
+      IF gs_alv_0106-stats NE 'C'.
+        MESSAGE i000(zmcpb) WITH '전표를 생성할 수 없는 문서입니다.'(c18). " & & & &
+        gv_subrc = 4.
+        RETURN.
+      ENDIF.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  zspb3005-fyear = zspb3005-tdate(4).
+  zspb3005-fperi = zspb3005-tdate+4(2).
+  zspb3005-pdate = zspb3005-tdate.
+
+  PERFORM details.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_PO_HEADERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+*FORM get_po_headers .
+*
+*  PERFORM set_tabstrip USING '104' '105' 'TAB_GR'.
+*
+*  SELECT *
+*    FROM ztpbpoh
+*    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0104.
+*
+*  IF zspb3009-date1 IS NOT INITIAL.
+*    IF zspb3009-date2 IS NOT INITIAL.
+*      " 두 날짜 모두 입력 시 해당 범위 내 검색
+*      DELETE gt_alv_0104 WHERE podat NOT BETWEEN zspb3009-date1 AND zspb3009-date2.
+*
+*    ELSE.
+*      " 앞 날짜만 입력 시 해당 날짜만 검색
+*      DELETE gt_alv_0104 WHERE podat NE zspb3009-date1.
+*    ENDIF.
+*
+*  ELSE.
+*    IF zspb3009-date2 IS NOT INITIAL.
+*      " 뒤 날짜만 입력 시 해당 날짜만 검색
+*      DELETE gt_alv_0104 WHERE podat NE zspb3009-date2.
+*
+*    ELSE.
+*      " 두 날짜 모두 입력 안할 시 전체 검색
+*    ENDIF.
+*
+*  ENDIF.
+*
+*  " 주문상태명 가져오기
+*  DATA: lt_domain TYPE TABLE OF dd07v,
+*        ls_domain LIKE LINE OF lt_domain.
+*
+*  READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' TRANSPORTING NO FIELDS.
+*  IF sy-subrc <> 0.
+*
+*    CALL FUNCTION 'GET_DOMAIN_VALUES'
+*      EXPORTING
+*        domname         = 'ZDPB_OSTAT'
+*      TABLES
+*        values_tab      = lt_domain
+*      EXCEPTIONS
+*        no_values_found = 1
+*        OTHERS          = 2.
+*    IF sy-subrc <> 0.
+** Implement suitable error handling here
+*    ENDIF.
+*
+*    APPEND LINES OF lt_domain TO gt_domain.
+*
+*  ENDIF.
+*
+*  " 입고상태명 가져오기
+*  READ TABLE gt_domain WITH KEY domname = 'ZDPB_PSTAT' TRANSPORTING NO FIELDS.
+*  IF sy-subrc <> 0.
+*
+*    CALL FUNCTION 'GET_DOMAIN_VALUES'
+*      EXPORTING
+*        domname         = 'ZDPB_PSTAT'
+*      TABLES
+*        values_tab      = lt_domain
+*      EXCEPTIONS
+*        no_values_found = 1
+*        OTHERS          = 2.
+*    IF sy-subrc <> 0.
+** Implement suitable error handling here
+*    ENDIF.
+*
+*    APPEND LINES OF lt_domain TO gt_domain.
+*
+*  ENDIF.
+*
+*  DATA ls_alv_0104 LIKE LINE OF gt_alv_0104.
+*  LOOP AT gt_alv_0104 INTO ls_alv_0104.
+*
+*    " 벤더사 이름 가져오기
+*    READ TABLE gt_vendor WITH KEY vendr = ls_alv_0104-vendr INTO gs_vendor.
+*    ls_alv_0104-vendt = gs_vendor-vendt.
+*
+*    " 주문상태명 가져오기
+*    READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' domvalue_l = ls_alv_0104-stats
+*    INTO ls_domain.
+*
+*    ls_alv_0104-stats_t = ls_domain-ddtext.
+*
+*    " 입고상태명 가져오기
+*    READ TABLE gt_domain WITH KEY domname = 'ZDPB_PSTAT' domvalue_l = ls_alv_0104-pstat
+*    INTO ls_domain.
+*
+*    ls_alv_0104-pstat_t = ls_domain-ddtext.
+*
+*    MODIFY gt_alv_0104 FROM ls_alv_0104.
+*    CLEAR: ls_alv_0104, ls_domain.
+*
+*  ENDLOOP.
+*
+*ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SO_HEADERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_so_headers .
+
+  PERFORM set_tabstrip USING '106' '107' 'TAB_GI'.
+
+  SELECT sonum
+         cusnr
+         waers
+         stats
+         descr
+    FROM ztpbsoh
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0106.
+
+  IF zspb3009-date1 IS NOT INITIAL.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 두 날짜 모두 입력 시 해당 범위 내 검색
+      DELETE gt_alv_0106 WHERE pgidt NOT BETWEEN zspb3009-date1 AND zspb3009-date2.
+
+    ELSE.
+      " 앞 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0106 WHERE pgidt NE zspb3009-date1.
+    ENDIF.
+
+  ELSE.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 뒤 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0106 WHERE pgidt NE zspb3009-date2.
+
+    ELSE.
+      " 두 날짜 모두 입력 안할 시 전체 검색
+    ENDIF.
+
+  ENDIF.
+
+  " 주문상태명 가져오기
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_OSTAT'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+  CLEAR: lt_domain, ls_domain.
+
+  " 출고상태명 가져오기
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_STATS' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_STATS'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+  DATA ls_alv_0106 LIKE LINE OF gt_alv_0106.
+  LOOP AT gt_alv_0106 INTO ls_alv_0106.
+
+    READ TABLE gt_custom WITH KEY cusnr = ls_alv_0106-cusnr INTO gs_custom.
+    ls_alv_0106-custt = gs_custom-custt.
+
+    " 출고상태명 가져오기
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' domvalue_l = ls_alv_0106-stats
+    INTO ls_domain.
+
+    ls_alv_0106-stats_t = ls_domain-ddtext.
+
+    MODIFY gt_alv_0106 FROM ls_alv_0106.
+    CLEAR ls_alv_0106.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_IV_HEADERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_iv_headers .
+
+  PERFORM set_tabstrip USING '102' '103' 'TAB_IV'.
+
+  DATA gr_date TYPE ztpbdate.
+  CALL FUNCTION 'ZFMPB_CHECK_DATE'
+    EXPORTING
+      iv_low       = zspb3009-date1
+      iv_high      = zspb3009-date2
+    IMPORTING
+      et_date      = gr_date
+    EXCEPTIONS
+      invalid_date = 1
+      OTHERS       = 2.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+  SELECT *
+    FROM ztpbinvh AS a
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0102
+    WHERE iflag = 'X'
+    AND pdate IN gr_date
+    AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh
+       WHERE refdo = a~invno
+    ).
+
+  SORT gt_alv_0102 BY pdate DESCENDING
+                      jchck_t DESCENDING.
+
+  IF gt_alv_0102 IS INITIAL.
+    MESSAGE s008(zmcpb) WITH '해당하는'(c22). " & 정보가 없습니다.
+  ENDIF.
+
+  " 송장유형명 가져오기
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_ITYPE' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_ITYPE'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+  CLEAR: lt_domain, ls_domain.
+
+  " 송장상태명 가져오기
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_IFLAG' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_IFLAG'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+  DATA: ls_alv_0102 LIKE LINE OF gt_alv_0102,
+        lt_ztpbinvi TYPE TABLE OF ztpbinvi,
+        ls_ztpbinvi LIKE LINE OF lt_ztpbinvi,
+        lv_price    TYPE ztpbinvi-price.
+
+  LOOP AT gt_alv_0102 INTO ls_alv_0102.
+
+    IF ls_alv_0102-vendr IS NOT INITIAL.
+
+      READ TABLE gt_vendor WITH KEY vendr = ls_alv_0102-vendr INTO gs_vendor.
+      ls_alv_0102-vendt = gs_vendor-vendt.
+      ls_alv_0102-compt = gs_vendor-vendt.
+      ls_alv_0102-refdo = ls_alv_0102-ponum.
+
+    ELSEIF ls_alv_0102-cusnr IS NOT INITIAL.
+
+      READ TABLE gt_custom WITH KEY cusnr = ls_alv_0102-cusnr INTO gs_custom.
+      ls_alv_0102-custt = gs_custom-custt.
+      ls_alv_0102-compt = gs_custom-custt.
+      ls_alv_0102-refdo = ls_alv_0102-sonum.
+
+    ENDIF.
+
+    " 송장유형명
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_ITYPE' domvalue_l = ls_alv_0102-itype
+    INTO ls_domain.
+    ls_alv_0102-itype_t = ls_domain-ddtext.
+
+    " 송장상태 --> 송장상태명
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_IFLAG' domvalue_l = ls_alv_0102-iflag
+    INTO ls_domain.
+    ls_alv_0102-iflag_t = ls_domain-ddtext.
+
+    " 전표 생성 여부
+    READ TABLE gt_journal WITH KEY refdo = ls_alv_0102-invno INTO gs_journal.
+    IF sy-subrc = 0.
+      ls_alv_0102-jchck_t = '@01@'.
+    ELSE.
+      ls_alv_0102-jchck_t = '@02@'.
+    ENDIF.
+
+    " 총 가격 계산
+    SELECT invno
+           price
+           poqty
+      FROM ztpbinvi
+      INTO CORRESPONDING FIELDS OF TABLE lt_ztpbinvi
+      WHERE invno = ls_alv_0102-invno.
+
+    LOOP AT lt_ztpbinvi INTO ls_ztpbinvi.
+
+      lv_price = lv_price + ( ls_ztpbinvi-price * ls_ztpbinvi-poqty ).
+
+    ENDLOOP.
+
+    ls_alv_0102-tprice = lv_price.
+    ls_alv_0102-waers = 'KRW'.
+
+    MODIFY gt_alv_0102 FROM ls_alv_0102.
+    CLEAR: ls_alv_0102, lv_price.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0100
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat_0100 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+      WHEN 'DBCRF_T'.
+        ls_fcat-coltext = '차변 / 대변'.
+      WHEN 'DESCR'.
+        ls_fcat-coltext = '적요'.
+      WHEN 'JOCUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'DBCRF'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CFLAG'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'GLACC'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0102
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GT_FCAT2  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0102 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible fields
+*      WHEN 'JCHCK_T'.
+*        ls_fcat-coltext = '전표 생성 여부'.
+*        ls_fcat-col_pos = '1'.
+      WHEN 'PDATE'.
+        ls_fcat-coltext = '송장일자'.
+        ls_fcat-col_pos = '2'.
+      WHEN 'COMPT'.
+        ls_fcat-col_pos = '14'.
+      WHEN 'ITYPE_T'.
+        ls_fcat-coltext = '송장유형'.
+        ls_fcat-col_pos = '17'.
+      WHEN 'TPRICE'.
+        ls_fcat-coltext = '총 금액'.
+        ls_fcat-col_pos = '18'.
+      WHEN 'WAERS'.
+        ls_fcat-coltext = '통화단위'.
+        ls_fcat-col_pos = '19'.
+      WHEN 'INVNO'.
+        ls_fcat-col_pos = '20'.
+        ls_fcat-hotspot = 'X'.
+        ls_fcat-emphasize = 'C410'.
+      WHEN 'REFDO'.
+        ls_fcat-col_pos = '21'.
+        ls_fcat-hotspot = 'X'.
+
+        " Invisible Fields
+      WHEN 'IFLAG'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'IFLAG_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'JCHCK'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'JCHCK_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'ITYPE'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'VENDR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CUSNR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'COMNR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'VENDT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CUSTT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PONUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SONUM'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0103
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0218   text
+*      <--P_GT_FCAT3  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0103 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible Fields
+      WHEN 'PRICE'.
+        ls_fcat-coltext = '단가'.
+
+        " Invisible Fields
+      WHEN 'INVNO'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PONUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SONUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'POITM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SOITM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'GRNUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'GINUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PRONR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'TPRICE'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0104
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0258   text
+*      <--P_GT_FCAT4  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0104 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible Fields
+*      WHEN 'JCHCK_T'.
+*        ls_fcat-coltext = '전표 생성 여부'.
+*        ls_fcat-col_pos = '1'.
+      WHEN 'STDAT'.
+        ls_fcat-col_pos = '2'.
+      WHEN 'TPRICE'.
+        ls_fcat-col_pos = '7'.
+        ls_fcat-coltext = '총 금액'.
+      WHEN 'WAERS'.
+        ls_fcat-col_pos = '8'.
+        ls_fcat-coltext = '통화단위'.
+      WHEN 'DESCR'.
+        ls_fcat-col_pos = '9'.
+      WHEN 'GRNUM'.
+        ls_fcat-hotspot = 'X'.
+        ls_fcat-emphasize = 'C410'.
+        ls_fcat-col_pos = '10'.
+      WHEN 'PONUM'.
+        ls_fcat-coltext = '참조문서'.
+        ls_fcat-col_pos = '11'.
+        ls_fcat-hotspot = 'X'.
+*
+*        " Invisible Fields
+      WHEN 'JCHCK_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PSTAT_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'VENDR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PSTAT'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0105
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0311   text
+*      <--P_GT_FCAT5  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0105 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible Fields
+      WHEN 'PRICE'.
+        ls_fcat-coltext = '단가'.
+
+        " Invisible Fields
+      WHEN 'GRNUM'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PRONR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PLANT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'LGORT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PSTAT'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0106
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0351   text
+*      <--P_GT_FCAT6  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0106 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible Fields
+*      WHEN 'JCHCK_T'.
+*        ls_fcat-col_pos = '1'.
+*        ls_fcat-coltext = '전표 생성 여부'.
+      WHEN 'PGIDT'.
+        ls_fcat-col_pos = '2'.
+      WHEN 'TPRICE'.
+        ls_fcat-coltext = '총 금액'.
+      WHEN 'WAERS'.
+        ls_fcat-coltext = '통화단위'.
+      WHEN 'GINUM'.
+        ls_fcat-hotspot = 'X'.
+        ls_fcat-emphasize = 'C410'.
+        ls_fcat-col_pos = '9'.
+      WHEN 'SONUM'.
+        ls_fcat-coltext = '참조문서'.
+        ls_fcat-col_pos = '10'.
+        ls_fcat-hotspot = 'X'.
+
+        " Invisible Fields
+      WHEN 'JCHCK_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'STATS_T'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CUSNR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CREAT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'CNAME'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'STATS'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SSTAT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'STOCK'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT_0107
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0404   text
+*      <--P_GT_FCAT7  text
+*----------------------------------------------------------------------*
+FORM set_fcat_0107 USING    VALUE(ps_structure_name)
+                   CHANGING ct_fcat TYPE lvc_t_fcat.
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = ps_structure_name
+    CHANGING
+      ct_fieldcat      = ct_fcat.
+
+  LOOP AT ct_fcat INTO ls_fcat.
+    CASE ls_fcat-fieldname.
+        " Visible Fields
+      WHEN 'PRONM'.
+        ls_fcat-col_pos = '2'.
+      WHEN 'SOQTY'.
+        ls_fcat-col_pos = '3'.
+      WHEN 'PUNIT'.
+        ls_fcat-col_pos = '4'.
+      WHEN 'PRICE'.
+        ls_fcat-col_pos = '5'.
+        ls_fcat-coltext = '단가'.
+      WHEN 'WAERS'.
+        ls_fcat-col_pos = '6'.
+
+        " Invisible Fields
+      WHEN 'PGINO'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PRONR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PLANT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'LGORT'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'PNAME'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SNAME'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'STATS'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'SSTAT'.
+        ls_fcat-no_out = 'X'.
+
+    ENDCASE.
+    MODIFY ct_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  TRANSACTION_TO_NEW_WINDOW
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0374   text
+*----------------------------------------------------------------------*
+FORM transaction_in_new_window  USING VALUE(p_trans).
+
+  CALL FUNCTION 'TH_CREATE_MODE'
+    EXPORTING
+      transaktion    = p_trans
+      process_dark   = 'X'
+    EXCEPTIONS
+      max_sessions   = 1
+      internal_error = 2
+      no_authority   = 3
+      OTHERS         = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CLEAR_FOR_TABS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM clear_for_tabs .
+
+  CLEAR: zspb3005-refdo, zspb3005-dtype, zspb3008,
+         gt_alv_0102, gt_alv_0104, gt_alv_0106,
+         gt_alv_0103, gt_alv_0105, gt_alv_0107.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  JOURNAL_CREATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM journal_create .
+
+  PERFORM check_refdo_status.
+
+  CHECK gv_subrc IS INITIAL.
+
+  PERFORM check_input.
+
+  IF gv_balance <> 0.
+    MESSAGE s000(zmcpb) WITH '대변과 차변의 금액이 일치하지 않습니다.'(c09). " & & & &
+    gv_subrc = 4.
+    RETURN.
+  ENDIF.
+
+  CHECK gv_subrc IS INITIAL.
+
+  IF gv_subrc = 0.
+
+    DATA: lv_numr   TYPE c LENGTH 10,
+          ls_header TYPE ztpbjonlh,
+          ls_item   TYPE ztpbjonli.
+
+    " 전표 번호 채번
+    PERFORM get_number_range CHANGING lv_numr.
+
+    PERFORM check_jocum USING    lv_numr
+                        CHANGING gv_subrc.
+
+    IF gv_subrc <> 0.
+      MESSAGE e006(zmcpb) WITH lv_numr '전표번호'(c11). " & 이미 존재하는 & 입니다.
+      RETURN.
+    ENDIF.
+
+    zspb3005-jocum = lv_numr.
+
+    MOVE-CORRESPONDING zspb3005 TO ls_header.
+
+    INSERT ztpbjonlh FROM ls_header. " 헤더 테이블 데이터 추가
+
+    LOOP AT gt_alv_0100 INTO gs_alv_0100.
+
+      IF gs_alv_0100-glacc = 20000004 AND gs_alv_0100-dbcrf = 'S'.
+        gs_alv_0100-cflag = 'X'. " 차변이 GR/IR이면 이미 반제처리 되었다고 가정
+        gs_alv_0100-cldate = sy-datum.
+        DATA lv_clnumr TYPE c LENGTH 10.
+        PERFORM get_cljocum CHANGING lv_clnumr. " 반제 전표번호 체번
+        gs_alv_0100-cljocum = lv_clnumr.
+
+      ENDIF.
+
+      gs_alv_0100-jocum = lv_numr.
+      MOVE-CORRESPONDING gs_alv_0100 TO ls_item.
+      INSERT ztpbjonli FROM ls_item.  " 아이템 테이블 데이터 추가
+      CLEAR ls_item.
+
+    ENDLOOP.
+
+    MESSAGE i011(zmcpb) WITH zspb3005-jocum '전표'(c10). " & & 저장되었습니다.
+    MESSAGE s000(zmcpb) WITH zspb3005-jocum. " & & & &
+    CLEAR: zspb3005, zspb3006, zspb3008, zspb3009,
+           gt_alv_0100, gt_alv_0102, gt_alv_0103,
+           gt_alv_0104, gt_alv_0105, gt_alv_0106,
+           gt_alv_0107.
+
+    gv_dynnr = 100.
+    PERFORM: set_default,
+             set_alv_0100_defualt.
+
+    PERFORM get_iv_headers.
+    COMMIT WORK.
+    LEAVE TO SCREEN 0.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ITEM_CREATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM item_create .
+
+  PERFORM check_refdo_input USING    zspb3005-refdo
+                                CHANGING gv_subrc.
+
+  CHECK gv_subrc IS INITIAL.
+
+  MODIFY gt_alv_0100 INDEX zspb3006-itnum FROM zspb3006.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GR_HEADERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gr_headers .
+
+  PERFORM set_tabstrip USING '104' '105' 'TAB_GR'.
+
+  SELECT *
+    FROM ztpbgrh AS a
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0104
+    WHERE pstat = 'C'
+    AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh
+       WHERE refdo = a~grnum
+    ).
+
+  IF zspb3009-date1 IS NOT INITIAL.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 두 날짜 모두 입력 시 해당 범위 내 검색
+      DELETE gt_alv_0104 WHERE stdat NOT BETWEEN zspb3009-date1 AND zspb3009-date2.
+
+    ELSE.
+      " 앞 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0104 WHERE stdat NE zspb3009-date1.
+    ENDIF.
+
+  ELSE.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 뒤 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0104 WHERE stdat NE zspb3009-date2.
+
+    ELSE.
+      " 두 날짜 모두 입력 안할 시 전체 검색
+    ENDIF.
+
+  ENDIF.
+
+  IF gt_alv_0104 IS INITIAL.
+    MESSAGE s008(zmcpb) WITH '해당하는'(c22). " & 정보가 없습니다.
+  ENDIF.
+
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  " 입고상태명 가져오기
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_PSTAT' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_PSTAT'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+  DATA ls_alv_0104 LIKE LINE OF gt_alv_0104.
+  LOOP AT gt_alv_0104 INTO ls_alv_0104.
+
+    " 벤더사 이름 가져오기
+    READ TABLE gt_vendor WITH KEY vendr = ls_alv_0104-vendr INTO gs_vendor.
+    ls_alv_0104-vendt = gs_vendor-vendt.
+
+    " 입고상태명 가져오기
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_PSTAT' domvalue_l = ls_alv_0104-pstat
+    INTO ls_domain.
+
+    ls_alv_0104-pstat_t = ls_domain-ddtext.
+
+    DATA: lt_ztpbgri LIKE TABLE OF ztpbgri,
+          ls_ztpbgri LIKE LINE OF lt_ztpbgri,
+          lv_price   TYPE zspb3030-tprice.
+    " 총 금액 계산
+    SELECT grnum
+           price
+           pgrqt
+      FROM ztpbgri
+      INTO CORRESPONDING FIELDS OF TABLE lt_ztpbgri
+      WHERE grnum = ls_alv_0104-grnum.
+
+    LOOP AT lt_ztpbgri INTO ls_ztpbgri.
+
+      lv_price = lv_price + ( ls_ztpbgri-price * ls_ztpbgri-pgrqt ).
+
+    ENDLOOP.
+
+    ls_alv_0104-tprice = lv_price.
+    ls_alv_0104-waers = 'KRW'.
+
+    " 전표 생성 여부
+    READ TABLE gt_journal WITH KEY refdo = ls_alv_0104-grnum INTO gs_journal.
+    IF sy-subrc = 0.
+      ls_alv_0104-jchck_t = '@01@'.
+    ELSE.
+      ls_alv_0104-jchck_t = '@02@'.
+    ENDIF.
+
+    MODIFY gt_alv_0104 FROM ls_alv_0104.
+    CLEAR: ls_alv_0104, ls_domain, lv_price.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GR_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gr_data .
+
+  " 참조문서 헤더
+  SELECT SINGLE a~grnum
+                a~vendr
+                b~vendt
+           FROM ztpbgrh AS a INNER JOIN ztpbvendor AS b ON a~vendr = b~vendr
+           INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+          WHERE a~grnum = zspb3005-refdo.
+
+  " 참조문서 아이템
+  SELECT *
+    FROM ztpbgri
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0105
+    WHERE grnum = zspb3005-refdo.
+
+  " 상품명 정보 담기
+  SELECT pronr
+         langu
+         pname
+    FROM ztpbproduct_t
+    INTO CORRESPONDING FIELDS OF TABLE gt_product.
+
+  DATA: ls_alv_0105 LIKE LINE OF gt_alv_0105,
+        lv_tprice   LIKE zspb3008-tprice,
+        lv_price    LIKE zspb3008-tprice.
+
+  LOOP AT gt_alv_0105 INTO ls_alv_0105.
+
+    " 상품명
+    READ TABLE gt_product WITH KEY pronr = ls_alv_0105-pronr
+                                   langu = sy-langu INTO gs_product.
+    ls_alv_0105-pronm = gs_product-pname.
+
+    " 총 가격 계산
+    lv_price = ls_alv_0105-price * ls_alv_0105-pgrqt.
+    lv_tprice = lv_tprice + lv_price.
+
+*    IF ls_alv_0105-pflag = 'X'.
+*      lv_tprice = lv_tprice - lv_price.
+*    ENDIF.
+
+    MODIFY gt_alv_0105 FROM ls_alv_0105.
+    CLEAR ls_alv_0105.
+
+  ENDLOOP.
+
+  zspb3008-tprice = lv_tprice.
+  zspb3008-waers = 'KRW'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GI_HEADERS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gi_headers .
+
+  PERFORM set_tabstrip USING '106' '107' 'TAB_GI'.
+
+  SELECT *
+    FROM ztpbgih AS a
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0106
+    WHERE stats = 'C'
+    AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh
+       WHERE refdo = a~ginum
+    ).
+
+  IF zspb3009-date1 IS NOT INITIAL.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 두 날짜 모두 입력 시 해당 범위 내 검색
+      DELETE gt_alv_0106 WHERE pgidt NOT BETWEEN zspb3009-date1 AND zspb3009-date2.
+
+    ELSE.
+      " 앞 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0106 WHERE pgidt NE zspb3009-date1.
+    ENDIF.
+
+  ELSE.
+    IF zspb3009-date2 IS NOT INITIAL.
+      " 뒤 날짜만 입력 시 해당 날짜만 검색
+      DELETE gt_alv_0106 WHERE pgidt NE zspb3009-date2.
+
+    ELSE.
+      " 두 날짜 모두 입력 안할 시 전체 검색
+    ENDIF.
+
+  ENDIF.
+
+  IF gt_alv_0106 IS INITIAL.
+    MESSAGE s008(zmcpb) WITH '해당하는'(c22). " & 정보가 없습니다.
+  ENDIF.
+
+  " 주문상태명 가져오기
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_OSTAT'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+  CLEAR: lt_domain, ls_domain.
+
+  " 출고상태명 가져오기
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_STATS' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_STATS'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+  DATA ls_alv_0106 LIKE LINE OF gt_alv_0106.
+  LOOP AT gt_alv_0106 INTO ls_alv_0106.
+
+    READ TABLE gt_custom WITH KEY cusnr = ls_alv_0106-cusnr INTO gs_custom.
+    ls_alv_0106-custt = gs_custom-custt.
+
+    " 출고상태명 가져오기
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_OSTAT' domvalue_l = ls_alv_0106-stats
+    INTO ls_domain.
+
+    ls_alv_0106-stats_t = ls_domain-ddtext.
+
+    DATA: lt_ztpbgii LIKE TABLE OF ztpbgii,
+          ls_ztpbgii LIKE LINE OF lt_ztpbgii,
+          lv_price   TYPE ztpbgii-price.
+    " 총 금액 계산
+    SELECT pgino
+           price
+           pgiqt
+      FROM ztpbgii
+      INTO CORRESPONDING FIELDS OF TABLE lt_ztpbgii
+      WHERE pgino = ls_alv_0106-ginum.
+
+    LOOP AT lt_ztpbgii INTO ls_ztpbgii.
+
+      lv_price = lv_price + ( ls_ztpbgii-price * ls_ztpbgii-pgiqt ).
+
+    ENDLOOP.
+
+    ls_alv_0106-tprice = lv_price.
+    ls_alv_0106-waers = 'KRW'.
+
+    READ TABLE gt_journal WITH KEY refdo = ls_alv_0106-ginum INTO gs_journal.
+    IF sy-subrc = 0.
+      ls_alv_0106-jchck_t = '@01@'.
+    ELSE.
+      ls_alv_0106-jchck_t = '@02@'.
+    ENDIF.
+
+    MODIFY gt_alv_0106 FROM ls_alv_0106.
+    CLEAR: ls_alv_0106, lv_price.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GI_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gi_data .
+
+  " 참조문서 헤더
+  SELECT SINGLE a~ginum
+                a~cusnr
+                b~custt
+           FROM ztpbgih AS a INNER JOIN ztpbcustom AS b ON a~cusnr = b~cusnr
+           INTO ( zspb3008-refdo, zspb3008-comnr, zspb3008-compt )
+          WHERE a~ginum = zspb3005-refdo.
+
+  " 참조문서 아이템
+  SELECT *
+    FROM ztpbgii
+    INTO CORRESPONDING FIELDS OF TABLE gt_alv_0107
+    WHERE pgino = zspb3005-refdo.
+
+  " 상품명 정보 담기
+  SELECT pronr
+         langu
+         pname
+    FROM ztpbproduct_t
+    INTO CORRESPONDING FIELDS OF TABLE gt_product.
+
+  DATA: ls_alv_0107 LIKE LINE OF gt_alv_0107,
+        lv_tprice   LIKE zspb3008-tprice,
+        lv_price    LIKE zspb3008-tprice.
+
+  LOOP AT gt_alv_0107 INTO ls_alv_0107.
+
+    " 상품명
+    READ TABLE gt_product WITH KEY pronr = ls_alv_0107-pronr
+                                   langu = sy-langu INTO gs_product.
+    ls_alv_0107-pronm = gs_product-pname.
+
+    " 총 가격 계산
+    lv_price = ls_alv_0107-price * ls_alv_0107-pgiqt.
+    lv_tprice = lv_tprice + lv_price.
+
+    MODIFY gt_alv_0107 FROM ls_alv_0107.
+    CLEAR ls_alv_0107.
+
+  ENDLOOP.
+
+  zspb3008-tprice = lv_tprice.
+  zspb3008-waers = 'KRW'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_JOURNAL_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_journal_data .
+
+  SELECT jocum
+         refdo
+    FROM ztpbjonlh
+    INTO CORRESPONDING FIELDS OF TABLE gt_journal.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_JOURNAL_EXIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_journal_exist .
+
+  CLEAR gv_subrc.
+
+  DATA lv_check TYPE c LENGTH 10.
+
+  SELECT SINGLE jocum
+    FROM ztpbjonlh
+    INTO lv_check
+    WHERE refdo = zspb3005-refdo.
+
+  IF sy-subrc = 0.
+    MESSAGE i006(zmcpb) WITH '전표가'(c20) '문서'(c21). " & 이미 존재하는 & 입니다.
+    gv_subrc = 4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_SELECTED_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_selected_alv .
+
+  CASE ts_ref-activetab.
+    WHEN 'TAB_IV'.
+      PERFORM get_invno.
+    WHEN 'TAB_GR'.
+      PERFORM get_grnum.
+    WHEN 'TAB_GI'.
+      PERFORM get_ginum.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_HVALUES_FROM_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GT_ALV_0102  text
+*      <--P_LT_ROW  text
+*      <--P_LS_ROW  text
+*----------------------------------------------------------------------*
+FORM get_hvalues_from_alv USING    VALUE(pv_check)
+                          CHANGING ct_alv TYPE STANDARD TABLE
+                                   ct_row TYPE lvc_t_roid
+                                   cs_row TYPE lvc_s_roid.
+
+  DATA: ls_alv_0102 LIKE LINE OF gt_alv_0102,
+        ls_alv_0104 LIKE LINE OF gt_alv_0104,
+        ls_alv_0106 LIKE LINE OF gt_alv_0106.
+
+  READ TABLE ct_row INDEX 1 INTO cs_row.
+
+  CASE pv_check.
+    WHEN 'IV'.
+
+      READ TABLE ct_alv INDEX cs_row-row_id INTO ls_alv_0102.
+      zspb3005-refdo = ls_alv_0102-invno.
+
+    WHEN 'GR'.
+
+      READ TABLE ct_alv INDEX cs_row-row_id INTO ls_alv_0104.
+      zspb3005-refdo = ls_alv_0104-grnum.
+
+    WHEN 'GI'.
+
+      READ TABLE ct_alv INDEX cs_row-row_id INTO ls_alv_0106.
+      zspb3005-refdo = ls_alv_0106-ginum.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_INVNO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_invno .
+
+*  CLEAR gv_subrc.
+*
+*  DATA: lt_row TYPE lvc_t_roid.
+*
+*  PERFORM get_selected_info USING    go_grid2
+*                            CHANGING lt_row.
+*
+*  PERFORM details.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GRNUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_grnum .
+
+  CLEAR gv_subrc.
+
+  DATA: lt_row       TYPE lvc_t_roid,
+        ls_row       TYPE lvc_s_roid,
+        lv_num       TYPE i,
+        lv_alv_check TYPE c LENGTH 2.
+
+  PERFORM get_selected_info USING    go_grid4
+                            CHANGING lt_row.
+
+  " 선택한 행 개수 체크
+  DESCRIBE TABLE lt_row LINES lv_num.
+  IF lv_num = 0.
+    gv_subrc = 4.
+*        MESSAGE i003(zmcpb) WITH '입력'(c14) '차변/대변'(c15). " & 할 &을(를) 선택하세요.
+
+  ELSEIF lv_num <> 1.
+    gv_subrc = 4.
+*        MESSAGE i009(zmcpb) WITH '차변/대변을 하나씩'(c16). " & 입력해주세요.
+  ENDIF.
+
+  IF gv_subrc IS INITIAL.
+
+    lv_alv_check = 'GR'.
+    PERFORM get_hvalues_from_alv USING    lv_alv_check
+                                 CHANGING gt_alv_0104
+                                          lt_row
+                                          ls_row.
+  ENDIF.
+  gv_alv_sel = 'X'.
+
+  PERFORM details.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GINUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_ginum .
+
+  CLEAR gv_subrc.
+
+  DATA: lt_row       TYPE lvc_t_roid,
+        ls_row       TYPE lvc_s_roid,
+        lv_num       TYPE i,
+        lv_alv_check TYPE c LENGTH 2.
+
+  PERFORM get_selected_info USING    go_grid6
+                            CHANGING lt_row.
+
+  " 선택한 행 개수 체크
+  DESCRIBE TABLE lt_row LINES lv_num.
+  IF lv_num = 0.
+    gv_subrc = 4.
+*        MESSAGE i003(zmcpb) WITH '입력'(c14) '차변/대변'(c15). " & 할 &을(를) 선택하세요.
+
+  ELSEIF lv_num <> 1.
+    gv_subrc = 4.
+*        MESSAGE i009(zmcpb) WITH '차변/대변을 하나씩'(c16). " & 입력해주세요.
+  ENDIF.
+
+  IF gv_subrc IS INITIAL.
+
+    lv_alv_check = 'GI'.
+    PERFORM get_hvalues_from_alv USING    lv_alv_check
+                                 CHANGING gt_alv_0106
+                                          lt_row
+                                          ls_row.
+  ENDIF.
+  gv_alv_sel = 'X'.
+
+  PERFORM details.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_DATE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_date .
+
+  CLEAR gv_subrc.
+
+  IF zspb3009-date1 IS INITIAL.
+
+    IF zspb3009-date2 IS INITIAL.
+      MESSAGE e009(zmcpb) WITH '날짜 정보를'. " & 입력해주세요.
+      gv_subrc = 4.
+
+    ELSE.
+
+    ENDIF.
+
+  ELSE. " 앞에 값이 있음
+
+    IF zspb3009-date2 IS INITIAL.
+
+    ELSEIF zspb3009-date1 > zspb3009-date2.
+      MESSAGE e000(zmcpb) WITH '올바른 날짜 범위를 입력하세요.'. " & & & &
+      gv_subrc = 4.
+    ENDIF.
+
+  ENDIF.
+
+*  CALL FUNCTION 'ZFMPB_CHECK_DATE'
+*    EXPORTING
+*      iv_low             =
+*      iv_high            =
+**   IMPORTING
+**     ET_DATE            =
+**   EXCEPTIONS
+**     INVALID_DATE       = 1
+**     OTHERS             = 2
+*            .
+*  IF sy-subrc <> 0.
+** Implement suitable error handling here
+*  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_CLJOCUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_cljocum CHANGING cv_numr.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZNRPB4021'
+*     QUANTITY    = '1'
+*     SUBOBJECT   = ' '
+*     toyear      = '0000'
+*     IGNORE_BUFFER                 = ' '
+    IMPORTING
+      number      = cv_numr
+*     QUANTITY    =
+*     RETURNCODE  =
+*   EXCEPTIONS
+*     INTERVAL_NOT_FOUND            = 1
+*     NUMBER_RANGE_NOT_INTERN       = 2
+*     OBJECT_NOT_FOUND              = 3
+*     QUANTITY_IS_0                 = 4
+*     QUANTITY_IS_NOT_1             = 5
+*     INTERVAL_OVERFLOW             = 6
+*     BUFFER_OVERFLOW               = 7
+*     OTHERS      = 8
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  CONCATENATE 'CL' sy-datum(4) cv_numr INTO cv_numr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DROPDOWN_DBCRF
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_dropdown_dbcrf .
+
+  DATA: lt_values TYPE vrm_values,
+        ls_value  LIKE LINE OF lt_values.
+
+  CLEAR lt_values[].
+
+  CASE zspb3006-dbcrf.
+    WHEN 'S'. " 차변
+
+      ls_value-key = '40'.
+      ls_value-text = '총계정원장 차변'.
+      APPEND ls_value TO lt_values.
+
+    WHEN 'H'. " 대변
+
+      ls_value-key = '50'.
+      ls_value-text = '총계정원장 대변'.
+      APPEND ls_value TO lt_values.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id           = 'ZSPB3006-POKEY' " 1단계에서 지정한 Name 속성값
+      values       = lt_values
+    EXCEPTIONS
+      id_not_found = 1
+      OTHERS       = 2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DROPDOWN_JTYPE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_dropdown_jtype .
+
+  DATA: lt_values TYPE vrm_values,
+        ls_value  LIKE LINE OF lt_values.
+
+  CLEAR lt_values[].
+
+  CASE zspb3005-dtype.
+    WHEN 'IV'. " 송장
+
+      IF gv_itype EQ '지급'.
+        ls_value-key = 'DR'.
+        ls_value-text = '벤더사 송장'.
+        APPEND ls_value TO lt_values.
+      ELSEIF gv_itype EQ '수금'.
+        ls_value-key = 'WE'.
+        ls_value-text = '고객사 송장'.
+        APPEND ls_value TO lt_values.
+      ENDIF.
+
+    WHEN 'GR'. " 입고
+
+      ls_value-key = 'KZ'.
+      ls_value-text = '벤더사 지급'.
+      APPEND ls_value TO lt_values.
+
+    WHEN 'GI'. " 출고
+
+      ls_value-key = 'DZ'.
+      ls_value-text = '고객사 수금'.
+      APPEND ls_value TO lt_values.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id           = 'ZSPB3005-JTYPE' " 1단계에서 지정한 Name 속성값
+      values       = lt_values
+    EXCEPTIONS
+      id_not_found = 1
+      OTHERS       = 2.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F4_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM f4_file .
+
+  DATA: lt_file TYPE filetable,
+        ls_file TYPE file_table,
+        lv_rc   TYPE i.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    CHANGING
+      file_table = lt_file
+      rc         = lv_rc.
+
+  READ TABLE lt_file INTO ls_file INDEX 1.
+  IF sy-subrc = 0.
+    gv_file = ls_file.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_excel_file .
+
+  DATA: lt_excel TYPE TABLE OF alsmex_tabline,
+        ls_excel LIKE LINE OF lt_excel,
+        lt_jonlh TYPE STANDARD TABLE OF ztpbjonlh,
+        ls_jonlh LIKE LINE OF lt_jonlh,
+        lt_jonli TYPE STANDARD TABLE OF ztpbjonli,
+        ls_jonli LIKE LINE OF lt_jonli.
+
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      filename                = gv_file
+      i_begin_col             = 1
+      i_begin_row             = 2
+      i_end_col               = 3
+      i_end_row               = 1000
+    TABLES
+      intern                  = lt_excel
+    EXCEPTIONS
+      inconsistent_parameters = 1
+      upload_ole              = 2
+      OTHERS                  = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  LOOP AT lt_excel INTO ls_excel.
+    CASE ls_excel-col.
+      WHEN '1'.
+        zspb3200-refdo = ls_excel-value.
+    ENDCASE.
+
+    AT END OF row.
+      APPEND zspb3200 TO gt_excel.
+      CLEAR zspb3200.
+    ENDAT.
+    CLEAR ls_excel.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM bdc .
+
+  DATA: ls_header LIKE ztpbjonlh,
+        ls_item1  TYPE zspb3006,
+        ls_item2  TYPE zspb3006.
+
+
+  LOOP AT gt_excel INTO gs_excel.
+
+    CALL FUNCTION 'ZFMPB_JOURNAL_CREATE'
+      EXPORTING
+        i_refdo   = gs_excel-refdo
+      IMPORTING
+        es_header = ls_header
+        es_item1  = ls_item1
+        es_item2  = ls_item2.
+
+    CLEAR: gt_bdc, gs_bdc.
+    gs_bdc-program = 'SAPMZPB2030_BDC'. "Program Name
+    gs_bdc-dynpro = '0100'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=CREATE'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3009-DATE1'. "Screen Element Name
+    gs_bdc-fval = zspb3009-date1. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3009-DATE2'. "Screen Element Name
+    gs_bdc-fval = zspb3009-date2. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-REFDO'. "Screen Element Name
+    gs_bdc-fval = ls_header-refdo. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-program = 'SAPMZPB2030_BDC'. "Program Name
+    gs_bdc-dynpro = '0110'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-JTYPE'. "Screen Element Name
+    gs_bdc-fval = ls_header-jtype. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-TDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-tdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-PDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-pdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-ITNUM'. "Screen Element Name
+    gs_bdc-fval = ls_item1-itnum. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-POKEY'. "Screen Element Name
+    gs_bdc-fval = ls_item1-pokey. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-DBCRF'. "Screen Element Name
+    gs_bdc-fval = ls_item1-dbcrf. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-GLACC'. "Screen Element Name
+    gs_bdc-fval = ls_item1-glacc. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-GNAME'. "Screen Element Name
+    gs_bdc-fval = ls_item1-gname. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=ITEM'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-program = 'SAPMZPB2030_BDC'. "Program Name
+    gs_bdc-dynpro = '0110'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-JTYPE'. "Screen Element Name
+    gs_bdc-fval = ls_header-jtype. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-TDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-tdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-PDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-pdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-ITNUM'. "Screen Element Name
+    gs_bdc-fval = ls_item2-itnum. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-POKEY'. "Screen Element Name
+    gs_bdc-fval = ls_item2-pokey. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-DBCRF'. "Screen Element Name
+    gs_bdc-fval = ls_item2-dbcrf. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-GLACC'. "Screen Element Name
+    gs_bdc-fval = ls_item2-glacc. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3006-GNAME'. "Screen Element Name
+    gs_bdc-fval = ls_item2-gname. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=ITEM'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-program = 'SAPMZPB2030_BDC'. "Program Name
+    gs_bdc-dynpro = '0110'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=INSERT'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-JTYPE'. "Screen Element Name
+    gs_bdc-fval = ls_header-jtype. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-TDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-tdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3005-PDATE'. "Screen Element Name
+    gs_bdc-fval = ls_header-pdate. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CALL TRANSACTION 'ZPB2030_BDC'
+    USING gt_bdc MODE 'A'. "A, E, N
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GT_SORT2  text
+*----------------------------------------------------------------------*
+FORM set_sort2.
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort2 ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'PDATE'.
+  <fs_sort>-down = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT4
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort4 .
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort4 ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'STDAT'.
+  <fs_sort>-down = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT6
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort6 .
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort6 ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'PGIDT'.
+  <fs_sort>-down = 'X'.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

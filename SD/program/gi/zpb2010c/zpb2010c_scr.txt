@@ -1,0 +1,51 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2010_SCR
+*&---------------------------------------------------------------------*
+
+
+SELECTION-SCREEN BEGIN OF BLOCK status_cond WITH FRAME TITLE TEXT-001.
+" 주문일자 / 요청납기일
+SELECT-OPTIONS: so_orddt FOR zspb1020-orddt,    " 주문일자
+                so_reqdl FOR zspb1020-reqdl.    " 요청납기일
+
+" 주문상태
+SELECTION-SCREEN BEGIN OF LINE.
+SELECTION-SCREEN COMMENT (10) TEXT-003.
+
+PARAMETERS: rb_wait RADIOBUTTON GROUP stat.
+SELECTION-SCREEN COMMENT (8) TEXT-005 FOR FIELD rb_wait.
+
+SELECTION-SCREEN POSITION 25.
+
+PARAMETERS: rb_rcv RADIOBUTTON GROUP stat.
+SELECTION-SCREEN COMMENT (12) TEXT-006 FOR FIELD rb_rcv.
+
+SELECTION-SCREEN POSITION 50.
+
+PARAMETERS: rb_close RADIOBUTTON GROUP stat.
+SELECTION-SCREEN COMMENT (8) TEXT-008 FOR FIELD rb_close.
+
+SELECTION-SCREEN POSITION 70.
+
+PARAMETERS: rb_all RADIOBUTTON GROUP stat DEFAULT 'X'.
+SELECTION-SCREEN COMMENT (8) TEXT-009 FOR FIELD rb_all.
+
+SELECTION-SCREEN END OF LINE.
+
+SELECTION-SCREEN END OF BLOCK status_cond.
+
+
+
+SELECTION-SCREEN BEGIN OF BLOCK info_cond WITH FRAME TITLE TEXT-020.
+" 주문번호 / 고객정보
+SELECT-OPTIONS: so_sonum FOR zspb1020-sonum,       " 판매오더번호
+                so_cusnr FOR zspb1020-cusnr.       " 고객번호
+
+*PARAMETERS: p_custt TYPE zepb_custt.               " 고객명
+
+PARAMETERS: p_creat TYPE zspb1020-creat.               " 담당자
+
+SELECTION-SCREEN END OF BLOCK info_cond.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

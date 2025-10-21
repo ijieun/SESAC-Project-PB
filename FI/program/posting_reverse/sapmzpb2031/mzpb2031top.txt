@@ -1,0 +1,62 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2031TOP                                       Module Pool      SAPMZPB2031
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2031.
+
+*&---------------------------------------------------------------------*
+*& Common
+*&---------------------------------------------------------------------*
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr LIKE sy-dynnr.
+
+" Get Parameter
+DATA gv_jocum TYPE ztpbjonlh-jocum.
+
+*&---------------------------------------------------------------------*
+*& 역분개 대상 전표
+*&---------------------------------------------------------------------*
+TABLES: zspb3010, " 헤더
+        zspb3011. " 아이템
+
+DATA: gs_journal_h TYPE zspb3010,
+      gt_journal_h LIKE TABLE OF gs_journal_h,
+
+      BEGIN OF gs_journal_i,
+        row_col TYPE char04.
+    INCLUDE TYPE zspb3011.
+DATA: END OF gs_journal_i,
+gt_journal_i LIKE TABLE OF gs_journal_i.
+
+*&---------------------------------------------------------------------*
+*& 역분개 생성 전표
+*&---------------------------------------------------------------------*
+DATA: gs_reverse_h TYPE zspb3010,
+      gt_reverse_h LIKE TABLE OF gs_reverse_h,
+
+      BEGIN OF gs_reverse_i,
+        row_col TYPE char04.
+    INCLUDE TYPE zspb3011.
+DATA: END OF gs_reverse_i,
+gt_reverse_i LIKE TABLE OF gs_reverse_i.
+
+*&---------------------------------------------------------------------*
+*& 역분개 대상 전표 ALV
+*&---------------------------------------------------------------------*
+DATA: go_con_j  TYPE REF TO cl_gui_custom_container,
+      go_grid_j TYPE REF TO cl_gui_alv_grid,
+      gs_layo   TYPE lvc_s_layo,
+      gt_fcat   TYPE lvc_t_fcat,
+      gs_fcat   TYPE lvc_s_fcat,
+      gt_sort   TYPE lvc_t_sort,
+      gs_sort   TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& 역분개 생성 전표 ALV
+*&---------------------------------------------------------------------*
+DATA: go_con_r  TYPE REF TO cl_gui_custom_container,
+      go_grid_r TYPE REF TO cl_gui_alv_grid.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

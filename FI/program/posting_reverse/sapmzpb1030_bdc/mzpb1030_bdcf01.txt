@@ -1,0 +1,829 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1030_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0100 .
+
+  IF go_con IS INITIAL.
+    PERFORM: create_objects,
+             set_alv.
+  ENDIF.
+
+  PERFORM display_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_OBJECTS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_objects.
+
+  CREATE OBJECT go_con
+    EXPORTING
+      container_name = 'CON'.
+
+  CREATE OBJECT go_alv
+    EXPORTING
+      i_parent = go_con.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv .
+
+  PERFORM: set_layo,
+           set_fcat,
+           set_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo .
+
+  gs_layo-cwidth_opt = 'X'.
+  gs_layo-zebra = 'X'.
+  gs_layo-sel_mode = 'A'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+
+  FIELD-SYMBOLS <fs_fcat> TYPE lvc_s_fcat.
+
+  " Visible Fields
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'CUSNR_S'.
+  <fs_fcat>-col_pos = '1'.
+
+  " Invisible Fields
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'CUSNR_F'.
+  <fs_fcat>-no_out = 'X'.
+
+*  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+*  <fs_fcat>-fieldname = 'PFLAG'.
+*  <fs_fcat>-no_out = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'PFLAG_X'.
+  <fs_fcat>-no_out = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'WAERS'.
+  <fs_fcat>-no_out = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'CUSNR_S'.
+  <fs_sort>-up = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name              = 'ZSPB3001'
+      is_layout                     = gs_layo
+    CHANGING
+      it_outtab                     = gt_data
+      it_fieldcatalog               = gt_fcat
+      it_sort                       = gt_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+    MESSAGE s016(pn) WITH 'display_alv 오류'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_list .
+
+  IF gv_dynnr = '0200'.
+
+    SELECT cusnr AS cusnr_s
+           pernr
+           waers
+           custt
+           phone
+           adres
+           pflag
+      FROM ztpbcustom
+      INTO CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO 20 ROWS " 삭제 레코드 제외 최근 20개까지만
+      WHERE pflag = ''
+      ORDER BY cusnr DESCENDING.
+
+  ELSE.
+
+    SELECT cusnr AS cusnr_s
+           pernr
+           waers
+           custt
+           phone
+           adres
+           pflag
+      FROM ztpbcustom
+      INTO CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO 100 ROWS. " 삭제 레코드 포함 100개까지만
+
+  ENDIF.
+
+  IF sy-subrc <> 0.
+    MESSAGE s000(zmcpb) WITH 'SELECT FROM 고객사테이블 실패'(c10). " & & & &
+  ENDIF.
+
+  SELECT pernr
+         lname
+         fname
+    FROM ztpbemp
+    INTO CORRESPONDING FIELDS OF TABLE gt_emp.
+
+  " 검색조건
+  PERFORM search_cond USING    zspb3001-cusnr_s
+                               zspb3001-cusnr_f
+                               zspb3001-pernr
+                      CHANGING gt_data.
+
+  IF zspb3001-pflag_x = 'X'.
+    DELETE gt_data WHERE pflag = ''.
+  ELSEIF zspb3001-pflag = 'X'.
+    DELETE gt_data WHERE pflag = 'X'.
+  ENDIF.
+
+  LOOP AT gt_data INTO gs_data.
+
+    READ TABLE gt_emp WITH KEY pernr = gs_data-pernr INTO gs_emp.
+    gs_data-lname = gs_emp-lname.
+    gs_data-fname = gs_emp-fname.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EMPNAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_empname USING    VALUE(p_pernr)
+                 CHANGING cv_ename TYPE ztpbemp-lname
+                          cv_fname
+                          cv_fullname.
+
+  IF p_pernr IS NOT INITIAL.
+
+    SELECT SINGLE lname
+                  fname
+      FROM ztpbemp
+      INTO ( cv_ename, cv_fname )
+      WHERE pernr = p_pernr.
+
+    CONCATENATE cv_ename cv_fname INTO cv_fullname.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_NEW_CUSTOMER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM insert_new_customer .
+
+  PERFORM check_pk.
+  PERFORM check_input.
+
+  IF gv_subrc IS INITIAL.
+
+    DATA: ls_ztpbcustom TYPE ztpbcustom,
+          ls_data       TYPE zspb3001.
+
+    CLEAR ls_data.
+
+    MOVE-CORRESPONDING zspb3002 TO ls_ztpbcustom.
+
+    INSERT INTO ztpbcustom VALUES ls_ztpbcustom.
+
+    MOVE-CORRESPONDING ls_ztpbcustom TO ls_data.
+    ls_data-cusnr_s = ls_ztpbcustom-cusnr.
+
+    SELECT SINGLE lname
+                  fname
+      FROM ztpbemp
+      INTO ( ls_data-lname, ls_data-fname )
+      WHERE pernr = ls_data-pernr.
+
+    APPEND ls_data TO gt_data.
+
+    MESSAGE s012(zmcpb) WITH '신규 고객사'(c08) ls_ztpbcustom-cusnr. " & & 등록되었습니다.
+    COMMIT WORK.
+
+  ENDIF.
+
+  CLEAR gv_subrc.
+  PERFORM alv_refresh.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_PK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_pk .
+
+  CASE sy-dynnr.
+    WHEN '0200'.
+      DATA ls_cusnr TYPE zspb3002-cusnr.
+
+      SELECT SINGLE cusnr
+        FROM ztpbcustom
+        INTO ls_cusnr
+        WHERE cusnr = zspb3002-cusnr.
+
+      IF sy-subrc IS INITIAL.
+        gv_subrc = 4.
+        MESSAGE i006(zmcpb) WITH zspb3002-cusnr '고객사 코드'(c06). " & 이미 존재하는 & 입니다.
+        ROLLBACK WORK.
+        RETURN.
+      ENDIF.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  UPDATE_CUSTOMER_INFO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM update_customer_info .
+
+  PERFORM check_input.
+  PERFORM check_change.
+
+  IF gv_subrc IS INITIAL.
+
+    DATA ls_data TYPE ztpbcustom.
+    CLEAR ls_data.
+
+
+    MOVE-CORRESPONDING zspb3002 TO zspb3001.
+    zspb3001-cusnr_s = zspb3002-cusnr.
+
+    MOVE-CORRESPONDING zspb3002 TO ls_data.
+
+    UPDATE ztpbcustom FROM ls_data.
+
+    MESSAGE s015(zmcpb) WITH zspb3002-cusnr '고객사 정보가'(c07). " & & 변경되었습니다.
+    COMMIT WORK.
+    LEAVE TO SCREEN 0.
+
+  ELSEIF gv_subrc = 1.
+    MESSAGE s008(zmcpb) WITH '변경된'. " & 정보가 없습니다.
+    ROLLBACK WORK.
+
+  ENDIF.
+
+  CLEAR gv_subrc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SCREEN_0300
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_screen_0300 .
+
+  DATA: lt_row_no TYPE lvc_t_roid,
+        ls_row_no LIKE LINE OF lt_row_no,
+        lv_cnt    TYPE i.
+
+  gv_dynnr = '0300'.
+
+  PERFORM valid_select USING    gv_dynnr
+                       CHANGING lt_row_no
+                                lv_cnt
+                                gv_subrc.
+
+  IF gv_subrc IS INITIAL.
+
+    PERFORM get_selected_data USING    gt_data
+                                     lt_row_no
+                            CHANGING gs_data
+                                     zspb3002
+                                     gs_pinfo
+                                     ls_row_no.
+
+    CALL SCREEN 300.
+  ENDIF.
+
+  CLEAR: zspb3002, gs_pinfo, gv_subrc, gv_dynnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SCREEN_0400
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_screen_0400 .
+
+  DATA: lt_row_no TYPE lvc_t_roid,
+        ls_row_no LIKE LINE OF lt_row_no,
+        lv_cnt    TYPE i.
+
+  gv_dynnr = '0400'.
+
+*  get PARAMETER ID 'TEST' FIELD DATA.
+
+
+  PERFORM valid_select USING    gv_dynnr
+                       CHANGING lt_row_no
+                                lv_cnt
+                                gv_subrc.
+
+  READ TABLE lt_row_no INDEX 1 INTO ls_row_no.
+  READ TABLE gt_data INDEX ls_row_no-row_id INTO gs_data.
+  MOVE-CORRESPONDING gs_data TO zspb3002.
+  zspb3002-cusnr = gs_data-cusnr_s.
+
+  CONCATENATE gs_data-lname gs_data-fname INTO zspb3002-pname.
+
+  IF gv_subrc IS INITIAL.
+    CALL SCREEN 400.
+    CLEAR: zspb3002, gv_subrc, gv_dynnr.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_input .
+
+  IF    zspb3002-cusnr IS NOT INITIAL
+    AND zspb3002-pernr IS NOT INITIAL
+    AND zspb3002-custt IS NOT INITIAL
+    AND zspb3002-phone IS NOT INITIAL
+    AND zspb3002-adres IS NOT INITIAL.
+
+  ELSE.
+    MESSAGE i000(zmcpb) WITH '모든 항목을 입력하세요.'(c09).
+    gv_subrc = 4.
+    ROLLBACK WORK.
+    RETURN.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  ALV_REFRESH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM alv_refresh .
+
+  CALL METHOD go_alv->refresh_table_display
+*    EXPORTING
+*      is_stable      =
+*      i_soft_refresh =
+    EXCEPTIONS
+      finished = 1
+      OTHERS   = 2.
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_CHANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_change .
+
+  IF    zspb3002-pernr EQ gs_pinfo-pernr
+    AND zspb3002-custt EQ gs_pinfo-custt
+    AND zspb3002-phone EQ gs_pinfo-phone
+    AND zspb3002-adres EQ gs_pinfo-adres
+    AND zspb3002-pflag EQ gs_pinfo-pflag.
+
+    gv_subrc = 1.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  VALID_SELECT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LT_ROW_NO  text
+*      <--P_LV_CNT  text
+*----------------------------------------------------------------------*
+FORM valid_select USING    p_dynnr
+                  CHANGING pt_row_no TYPE lvc_t_roid
+                           cv_cnt
+                           cv_subrc.
+
+  DATA: ls_row_no TYPE lvc_s_roid,
+        ls_data   TYPE zspb3001.
+
+  CLEAR cv_subrc.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_row_no = pt_row_no.
+
+  DESCRIBE TABLE pt_row_no LINES cv_cnt.
+
+  IF p_dynnr = '0300'.
+
+    CASE cv_cnt.
+      WHEN '1'.
+        READ TABLE pt_row_no INDEX 1 INTO ls_row_no.
+        READ TABLE gt_data INDEX ls_row_no-row_id INTO ls_data.
+        IF ls_data-pflag = 'X'.
+          MESSAGE i000(zmcpb) WITH '삭제된 레코드는 변경할 수 없습니다.'(c14). " & & & &
+          cv_subrc = 4.
+          RETURN.
+        ENDIF.
+      WHEN '0'.
+        MESSAGE i003(zmcpb) WITH '변경'(c16) '레코드'(c15). " & 할 &을(를) 선택하세요.
+        cv_subrc = 4.
+        RETURN.
+      WHEN OTHERS.
+        MESSAGE i004(zmcpb) WITH '변경'(c16). " 한 건만 & 가능합니다.
+        cv_subrc = 4.
+        RETURN.
+    ENDCASE.
+
+  ELSEIF p_dynnr = '0400'.
+
+    CASE cv_cnt.
+      WHEN '1'.
+      WHEN '0'.
+        MESSAGE i003(zmcpb) WITH '조회'(c17) '레코드'(c15). " & 할 &을(를) 선택하세요.
+        cv_subrc = 4.
+        RETURN.
+      WHEN OTHERS.
+        MESSAGE i004(zmcpb) WITH '조회'(c17). " 한 건만 & 가능합니다.
+        cv_subrc = 4.
+        RETURN.
+    ENDCASE.
+
+  ENDIF.
+
+*  CASE cv_cnt.
+*    WHEN '1'.
+*      READ TABLE pt_row_no INDEX 1 INTO ls_row_no.
+*      READ TABLE gt_data INDEX ls_row_no-row_id INTO ls_data.
+*      IF ls_data-pflag = 'X'.
+*        MESSAGE i000(zmcpb) WITH '삭제된 레코드는 변경할 수 없습니다.'(c14). " & & & &
+*        cv_subrc = 4.
+*        RETURN.
+*      ENDIF.
+*    WHEN '0'.
+*      MESSAGE i003(zmcpb) WITH p_txt '레코드'(c15). " & 할 &을(를) 선택하세요.
+*      cv_subrc = 4.
+*      RETURN.
+*    WHEN OTHERS.
+*      MESSAGE i004(zmcpb) WITH p_txt. " 한 건만 & 가능합니다.
+*      cv_subrc = 4.
+*      RETURN.
+*  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECTED_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GT_DATA  text
+*      -->P_LT_ROW_NO  text
+*      <--P_GS_DATA  text
+*      <--P_ZSPB3002  text
+*      <--P_GS_PINFO  text
+*      <--P_LS_ROW_NO  text
+*----------------------------------------------------------------------*
+FORM get_selected_data  USING    VALUE(pt_data) TYPE zspb3001_t
+                                 VALUE(pt_row_no) TYPE lvc_t_roid
+                        CHANGING cs_data LIKE gs_data
+                                 cspb TYPE zspb3002
+                                 cs_pinfo LIKE gs_pinfo
+                                 cs_row_no TYPE lvc_s_roid.
+
+  READ TABLE pt_row_no INDEX 1 INTO cs_row_no.
+  READ TABLE pt_data INDEX cs_row_no-row_id INTO cs_data.
+  MOVE-CORRESPONDING cs_data TO cspb.
+  cspb-cusnr = cs_data-cusnr_s.
+
+  MOVE-CORRESPONDING cspb TO cs_pinfo.
+
+  SELECT SINGLE lname
+                fname
+           FROM ztpbemp
+           INTO ( cs_pinfo-lname, cs_pinfo-fname )
+           WHERE pernr = cs_pinfo-pernr.
+
+  " 기존 정보 내 담당사원명
+  CONCATENATE cs_pinfo-lname cs_pinfo-fname INTO gv_fullname.
+
+  " 변경항목 내 담당사원명
+  PERFORM get_empname USING    cspb-pernr
+                      CHANGING cspb-lname
+                               cspb-fname
+                               cspb-pname.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SEARCH_COND
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM search_cond USING VALUE(p_cusnr_s)
+                       VALUE(p_cusnr_f)
+                       VALUE(p_pernr)
+                       CHANGING ct_data TYPE zspb3001_t.
+
+  IF p_cusnr_s IS NOT INITIAL.
+    IF p_cusnr_f IS NOT INITIAL.
+
+      IF zspb3001-cusnr_s > zspb3001-cusnr_f.
+        MESSAGE i000(zmcpb) WITH '잘못된 입력 범위입니다.'(c12). " & & & &
+        RETURN.
+      ENDIF.
+
+      DELETE ct_data WHERE cusnr_s NOT BETWEEN p_cusnr_s AND p_cusnr_f.
+
+    ELSE.
+      DELETE ct_data WHERE cusnr_s <> p_cusnr_s.
+    ENDIF.
+
+  ELSEIF p_cusnr_f IS NOT INITIAL.
+    DELETE ct_data WHERE cusnr_s <> p_cusnr_f.
+  ENDIF.
+
+  IF p_pernr IS NOT INITIAL.
+    DELETE ct_data WHERE pernr <> p_pernr.
+
+    IF ct_data IS INITIAL.
+      MESSAGE s000(zmcpb) WITH p_pernr '이 담당하는 고객사가 없습니다.'(c11).
+    ENDIF.
+  ENDIF.
+
+  IF ct_data IS INITIAL.
+    MESSAGE s001(zmcpb) WITH '해당 조건과'(c13). " & & & & 일치하는 정보가 없습니다.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F4_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM f4_file .
+
+  DATA : lt_file TYPE filetable,
+         ls_file TYPE file_table,
+         lv_rc   TYPE i.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    CHANGING
+      file_table = lt_file
+      rc         = lv_rc.
+
+  READ TABLE lt_file INTO ls_file INDEX 1.
+  IF sy-subrc = 0.
+    gv_file = ls_file.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXCEL_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_excel_file .
+
+  DATA: lt_excel      TYPE TABLE OF alsmex_tabline,
+        ls_excel      LIKE LINE OF lt_excel,
+        lt_ztpbcustom TYPE STANDARD TABLE OF ztpbcustom,
+        ls_ztpbcustom LIKE LINE OF lt_ztpbcustom.
+
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      filename                = gv_file
+      i_begin_col             = 1
+      i_begin_row             = 2
+      i_end_col               = 10
+      i_end_row               = 1000
+    TABLES
+      intern                  = lt_excel
+    EXCEPTIONS
+      inconsistent_parameters = 1
+      upload_ole              = 2
+      OTHERS                  = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  LOOP AT lt_excel INTO ls_excel.
+    CASE ls_excel-col.
+      WHEN '1'.
+        gs_data-cusnr_s = ls_excel-value.
+      WHEN '2'.
+        gs_data-pernr = ls_excel-value.
+      WHEN '3'.
+        gs_data-custt = ls_excel-value.
+      WHEN '4'.
+        gs_data-phone = ls_excel-value.
+      WHEN '5'.
+        gs_data-adres = ls_excel-value.
+*      WHEN '6'.
+*        gs_data-waers = ls_excel-value.
+*      WHEN '7'.
+*        gs_data-pflag = ls_excel-value.
+    ENDCASE.
+
+    AT END OF row.
+      APPEND gs_data TO gt_excel.
+*      MOVE-CORRESPONDING gs_data TO ls_ztpbcustom.
+*      ls_ztpbcustom-cusnr = gs_data-cusnr_s.
+      CLEAR gs_data.
+    ENDAT.
+    CLEAR ls_excel.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM bdc .
+
+  DATA: ls_data LIKE LINE OF gt_data.
+
+  LOOP AT gt_excel INTO gs_excel.
+
+    CLEAR: gt_bdc, gs_bdc.
+    gs_bdc-program = 'SAPMZPB1030_BDC'. "Program Name
+    gs_bdc-dynpro = '0100'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=CREATE'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-program = 'SAPMZPB1030_BDC'. "Program Name
+    gs_bdc-dynpro = '0200'. " Screen No
+    gs_bdc-dynbegin = 'X'.  " Start Screen
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'BDC_OKCODE'. "Screen Element Name
+    gs_bdc-fval = '=APPLY'. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3002-CUSNR'. "Screen Element Name
+    gs_bdc-fval = gs_excel-cusnr_s. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3002-PERNR'. "Screen Element Name
+    gs_bdc-fval = gs_excel-pernr. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3002-CUSTT'. "Screen Element Name
+    gs_bdc-fval = gs_excel-custt. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3002-PHONE'. "Screen Element Name
+    gs_bdc-fval = gs_excel-phone. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CLEAR gs_bdc.
+    gs_bdc-fnam = 'ZSPB3002-ADRES'. "Screen Element Name
+    gs_bdc-fval = gs_excel-adres. "Screen Input Value
+    APPEND gs_bdc TO gt_bdc.
+
+    CALL TRANSACTION 'ZPB1030_BDC'
+    USING gt_bdc MODE 'E'. "A, E, N
+
+    MOVE-CORRESPONDING gs_excel TO ls_data.
+    APPEND ls_data TO gt_data.
+
+  ENDLOOP.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

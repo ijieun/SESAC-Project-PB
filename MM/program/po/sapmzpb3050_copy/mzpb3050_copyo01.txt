@@ -1,0 +1,115 @@
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH '[MM] 구매오더 승인/반려 프로그램'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_RED'
+    IMPORTING
+      result                = reject_icon
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_YELLOW'
+    IMPORTING
+      result                = wait_icon
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_GREEN'
+    IMPORTING
+      result                = receive_icon
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_INFORMATION'
+    IMPORTING
+      result                = info_icon
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  PERFORM create_alv_0100.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0101 OUTPUT.
+  SET PF-STATUS 'S101P'.
+  SET TITLEBAR 'T101' WITH '현재 보유 중인 재고 조회 팝업 PO 번호:' gv_pokey.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0101 OUTPUT.
+
+  PERFORM create_alv_0101.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon_0101 OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_INFORMATION'
+    IMPORTING
+      result                = info_icon
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

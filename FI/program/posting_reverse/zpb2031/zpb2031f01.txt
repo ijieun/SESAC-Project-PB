@@ -1,0 +1,410 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2031F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_0100
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_0100 .
+
+  IF go_con IS INITIAL.
+    CREATE OBJECT go_con
+      EXPORTING
+        container_name = 'CON'.
+
+    CREATE OBJECT go_grid
+      EXPORTING
+        i_parent = go_con.
+
+    PERFORM set_layo.
+    PERFORM set_fcat.
+    PERFORM set_sort.
+
+    PERFORM display_alv.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+
+  FIELD-SYMBOLS <fs_fcat> TYPE lvc_s_fcat.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'FYEAR'.
+  <fs_fcat>-col_pos = '1'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'FPERI'.
+  <fs_fcat>-col_pos = '2'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'PDATE'.
+  <fs_fcat>-col_pos = '3'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'JTYPE_T'.
+  <fs_fcat>-coltext = '전표유형명'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'DBCRF_T'.
+  <fs_fcat>-coltext = '차변/대변'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'POKEY_T'.
+  <fs_fcat>-coltext = '전기키 설명'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'CFLAG_T'.
+  <fs_fcat>-coltext = '반제 여부'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'PRICE_S'.
+  <fs_fcat>-coltext = '차변 금액'.
+  <fs_fcat>-do_sum = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'PRICE_H'.
+  <fs_fcat>-coltext = '대변 금액'.
+  <fs_fcat>-do_sum = 'X'.
+
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'CUSNR'.
+  <fs_fcat>-no_out = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'VENDR'.
+  <fs_fcat>-no_out = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'DBCRF'.
+  <fs_fcat>-no_out = 'X'.
+
+  APPEND INITIAL LINE TO gt_fcat ASSIGNING <fs_fcat>.
+  <fs_fcat>-fieldname = 'CFLAG'.
+  <fs_fcat>-no_out = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'PDATE'.
+  <fs_sort>-down = 'X'.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'FYEAR'.
+  <fs_sort>-down = 'X'.
+  <fs_sort>-subtot = 'X'.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'FPERI'.
+  <fs_sort>-down = 'X'.
+  <fs_sort>-subtot = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+
+  CALL METHOD go_grid->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB3300'
+      is_layout        = gs_layo
+    CHANGING
+      it_outtab        = gt_data
+      it_fieldcatalog  = gt_fcat
+      it_sort          = gt_sort
+*    EXCEPTIONS
+*     invalid_parameter_combination = 1
+*     program_error    = 2
+*     too_many_lines   = 3
+*     others           = 4
+    .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo .
+
+  gs_layo-cwidth_opt = 'A'.
+*  gs_layo-zebra = 'X'.
+  gs_layo-info_fname = 'ROW_COL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SEARCH_CONDS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM search_conds .
+
+  CLEAR gv_subrc.
+
+  IF so_pdate+3(4) NE so_fyear+3(4) OR so_pdate+7(2) NE so_fperi+3(2).
+    IF so_pdate IS NOT INITIAL.
+      MESSAGE s000(zmcpb) WITH '전기일'(c03)
+                               '회계연도'(c04)
+                               '회계기간'(c05) '을 일치시키십시오.'(c06). " & & & &
+      gv_subrc = 4.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  DELETE gt_data WHERE pdate NOT IN so_pdate.
+  DELETE gt_data WHERE fyear NOT IN so_fyear.
+  DELETE gt_data WHERE fperi NOT IN so_fperi.
+  DELETE gt_data WHERE jtype NOT IN so_jtype.
+  DELETE gt_data WHERE glacc NOT IN so_glacc.
+
+  IF so_cusnr IS NOT INITIAL.
+    IF so_vendr IS NOT INITIAL.
+      DELETE gt_data WHERE ( comnr(1) = 'C' AND comnr NOT IN so_cusnr )
+                        OR ( comnr(1) = 'V' AND comnr NOT IN so_vendr ).
+    ELSEIF so_vendr IS INITIAL.
+      DELETE gt_data WHERE comnr NOT IN so_cusnr OR comnr(1) = 'V'.
+    ENDIF.
+  ELSEIF so_cusnr IS INITIAL.
+    IF so_vendr IS NOT INITIAL.
+      DELETE gt_data WHERE comnr NOT IN so_vendr OR comnr(1) = 'C'.
+    ENDIF.
+  ENDIF.
+
+*  IF pa_cfl_a IS NOT INITIAL.
+*    IF pa_cfl_b IS INITIAL.
+*      DELETE gt_data WHERE cflag = 'X'.
+*    ENDIF.
+*  ELSE.
+*    IF pa_cfl_b IS NOT INITIAL.
+*      DELETE gt_data WHERE cflag = ''.
+*    ENDIF.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DOMAIN
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_domain .
+
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_JTYPE' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_JTYPE'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_DBCRF' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_DBCRF'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+
+  READ TABLE gt_domain WITH KEY domname = 'ZDPB_POKEY' TRANSPORTING NO FIELDS.
+  IF sy-subrc <> 0.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_POKEY'
+      TABLES
+        values_tab      = lt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    APPEND LINES OF lt_domain TO gt_domain.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DB
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_db .
+
+  SELECT cusnr
+         custt
+    FROM ztpbcustom
+    INTO CORRESPONDING FIELDS OF TABLE gt_custom.
+
+  SELECT vendr
+         vendt
+    FROM ztpbvendor
+    INTO CORRESPONDING FIELDS OF TABLE gt_vendor.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_COMPT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_compt .
+
+  DATA: lv_refdo TYPE zepb_refdo,
+
+        BEGIN OF ls_iv,
+          invno TYPE zepb_invno,
+          cusnr TYPE zepb_cusnr,
+          vendr TYPE zepb_vendr,
+        END OF ls_iv,
+
+        BEGIN OF ls_gr,
+          grnum TYPE zepb_grnum,
+          vendr TYPE zepb_vendr,
+        END OF ls_gr,
+
+        BEGIN OF ls_gi,
+          ginum TYPE zepb_ginum,
+          cusnr TYPE zepb_cusnr,
+        END OF ls_gi.
+
+  SELECT SINGLE refdo
+    FROM ztpbjonlh
+    INTO lv_refdo
+    WHERE jocum = gs_data-jocum.
+
+  SELECT SINGLE invno
+                cusnr
+                vendr
+    FROM ztpbinvh
+    INTO CORRESPONDING FIELDS OF ls_iv
+    WHERE invno = lv_refdo.
+
+  IF sy-subrc <> 0.
+
+    SELECT SINGLE grnum
+                  vendr
+      FROM ztpbgrh
+      INTO CORRESPONDING FIELDS OF ls_gr
+      WHERE grnum = lv_refdo.
+
+    IF sy-subrc <> 0.
+
+      SELECT SINGLE ginum
+                    cusnr
+        FROM ztpbgih
+        INTO CORRESPONDING FIELDS OF ls_gi
+        WHERE ginum = lv_refdo.
+
+      READ TABLE gt_custom WITH KEY cusnr = ls_gi-cusnr INTO gs_custom.
+      gs_data-compt = gs_custom-custt.
+      gs_data-cusnr = gs_custom-cusnr.
+      gs_data-comnr = gs_custom-cusnr.
+
+    ELSE.
+
+      READ TABLE gt_vendor WITH KEY vendr = ls_gr-vendr INTO gs_vendor.
+      gs_data-compt = gs_vendor-vendt.
+      gs_data-vendr = gs_vendor-vendr.
+      gs_data-comnr = gs_vendor-vendr.
+
+    ENDIF.
+
+  ELSE.
+
+    READ TABLE gt_custom WITH KEY cusnr = ls_iv-cusnr INTO gs_custom.
+    IF sy-subrc IS INITIAL.
+      gs_data-compt = gs_custom-custt.
+      gs_data-cusnr = gs_custom-cusnr.
+      gs_data-comnr = gs_custom-cusnr.
+
+    ELSE.
+      READ TABLE gt_vendor WITH KEY vendr = ls_iv-vendr INTO gs_vendor.
+      gs_data-compt = gs_vendor-vendt.
+      gs_data-vendr = gs_vendor-vendr.
+      gs_data-comnr = gs_vendor-vendr.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

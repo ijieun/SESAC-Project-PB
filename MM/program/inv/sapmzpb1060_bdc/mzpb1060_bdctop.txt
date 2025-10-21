@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1060TOP                                       Module Pool      SAPMZPB1060
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1060.
+TABLES: ztpbemp, zspb2201, zspb2202, zspb2203, zspb2204, zspb2205.
+
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc.
+
+DATA: go_con_0100  TYPE REF TO cl_gui_custom_container,
+      go_grid_0100 TYPE REF TO cl_gui_alv_grid,
+      go_con_0200  TYPE REF TO cl_gui_custom_container,
+      go_grid_0200 TYPE REF TO cl_gui_alv_grid,
+      go_con_0300  TYPE REF TO cl_gui_custom_container,
+      go_grid_0300 TYPE REF TO cl_gui_alv_grid.
+
+RANGES: gr_pernr FOR ztpbemp-pernr.
+
+DATA: BEGIN OF gs_list.
+    INCLUDE STRUCTURE zspb2202.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+DATA: gs_col LIKE LINE OF gs_list-lt_col.
+
+DATA: gt_domain TYPE TABLE OF dd07v.
+
+DATA: gs_before TYPE zspb2204.
+
+DATA: gt_delete TYPE TABLE OF ztpbemp.
+
+TABLES: rlgrap.
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gs_data TYPE zspb2203,
+      gt_data LIKE TABLE OF gs_data.
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

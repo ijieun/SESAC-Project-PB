@@ -1,0 +1,583 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2010_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT_COND
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default_cond .
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0021   text
+*      -->P_GO_CON  text
+*      -->P_GO_ALV  text
+*----------------------------------------------------------------------*
+FORM create_alv  CHANGING po_con TYPE REF TO cl_gui_docking_container
+                          po_alv TYPE REF TO cl_gui_alv_grid.
+
+  CREATE OBJECT po_con
+    EXPORTING
+      side      = cl_gui_docking_container=>dock_at_left
+      extension = 3500.
+
+  CREATE OBJECT po_alv
+    EXPORTING
+      i_parent = po_con.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_ALV  text
+*      -->P_0054   text
+*      <--P_GS_LAYO  text
+*      <--P_GT_DATA  text
+*      <--P_GT_FCAT  text
+*      <--P_GT_SORT  text
+*----------------------------------------------------------------------*
+FORM display_alv  USING VALUE(po_alv) TYPE REF TO cl_gui_alv_grid
+                        VALUE(p_stname)
+                  CHANGING ps_layo TYPE lvc_s_layo
+                            pt_outtab
+                            pt_fcat TYPE lvc_t_fcat
+                            pt_sort TYPE lvc_t_sort.
+  CALL METHOD po_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name              = p_stname
+      is_layout                     = ps_layo
+    CHANGING
+      it_outtab                     = pt_outtab
+      it_fieldcatalog               = pt_fcat
+      it_sort                       = pt_sort
+*     it_filter                     =
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_light .
+  LOOP AT gt_data ASSIGNING FIELD-SYMBOL(<fs>).
+    IF <fs>-sstat = 'C'.
+      <fs>-light_s = '3'.
+    ELSEIF <fs>-stats = 'W' AND <fs>-sstat = 'O'.
+      <fs>-light_s = '1'.
+    ELSEIF <fs>-stats = 'R' AND <fs>-sstat = 'O'.
+      <fs>-light_s = '2'.
+    ENDIF.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_REJECTED_ORDER_COLOR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_rejected_order_color .
+  LOOP AT gt_data ASSIGNING FIELD-SYMBOL(<fs>).
+    IF <fs>-stats = 'X'.
+      <fs>-row_col = 'C610'.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0039   text
+*      <--P_GS_LAYO  text
+*----------------------------------------------------------------------*
+FORM set_layo  USING VALUE(p_default)
+                CHANGING ps_layo TYPE lvc_s_layo.
+  CLEAR ps_layo.
+
+  CASE p_default.
+    WHEN 'X'.
+      ps_layo-cwidth_opt = 'X'.
+      ps_layo-zebra = 'X'.
+      ps_layo-excp_fname = 'LIGHT_S'.
+      ps_layo-excp_led = 'X'.
+      ps_layo-info_fname = 'ROW_COL'.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0045   text
+*----------------------------------------------------------------------*
+FORM set_fcat  USING VALUE(p_default)
+               CHANGING pt_fcat TYPE lvc_t_fcat.
+  CLEAR: pt_fcat.
+  DATA: ps_fcat LIKE LINE OF pt_fcat.
+
+  CASE p_default.
+    WHEN 'X'.
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'LIGHT_S'.
+      ps_fcat-col_pos = '1'.
+      ps_fcat-coltext = '주문상태'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'LIGHT_G'.
+      ps_fcat-no_out = 'X'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'SONUM'.
+      ps_fcat-col_pos = '2'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CUSNR'.
+      ps_fcat-col_pos = '2'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CUSTT'.
+      ps_fcat-col_pos = '3'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CREAT'.
+      ps_fcat-col_pos = '4'.
+      ps_fcat-coltext = '오더담당자코드'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CNAME'.
+      ps_fcat-col_pos = '5'.
+      ps_fcat-coltext = '오더담당자명'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'ORDDT'.
+      ps_fcat-col_pos = '6'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'REQDL'.
+      ps_fcat-col_pos = '7'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'DESCR'.
+      ps_fcat-col_pos = '8'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'DELAY_S'.
+      ps_fcat-col_pos = '9'.
+      ps_fcat-coltext = '승인 지연일수'.
+      ps_fcat-emphasize = 'C310'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'PLAND'.
+      ps_fcat-col_pos = '10'.
+      ps_fcat-coltext = '출고권장일'.
+      ps_fcat-emphasize = 'C110'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'GINUM'.
+      ps_fcat-col_pos = '11'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CREAT_G'.
+      ps_fcat-col_pos = '12'.
+      ps_fcat-coltext = '출고담당자코드'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'CNAME_G'.
+      ps_fcat-col_pos = '13'.
+      ps_fcat-coltext = '출고담당자명'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'PGIDT'.
+      ps_fcat-col_pos = '14'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'ADRES'.
+      ps_fcat-col_pos = '15'.
+      ps_fcat-coltext = '배송지'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'DESCR_G'.
+      ps_fcat-col_pos = '16'.
+      ps_fcat-coltext = '부가설명'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'DELAY_G'.
+      ps_fcat-col_pos = '17'.
+      ps_fcat-coltext = '출고 지연일수'.
+      ps_fcat-emphasize = 'C310'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'STATS'.
+      ps_fcat-no_out = 'X'.
+      APPEND ps_fcat TO pt_fcat.
+
+      CLEAR ps_fcat.
+      ps_fcat-fieldname = 'SSTAT'.
+      ps_fcat-no_out = 'X'.
+      APPEND ps_fcat TO pt_fcat.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0049   text
+*      <--P_GT_SORT  text
+*----------------------------------------------------------------------*
+FORM set_sort  USING VALUE(p_default)
+               CHANGING pt_sort TYPE lvc_t_sort.
+  DATA: ps_sort LIKE LINE OF pt_sort.
+  CLEAR pt_sort.
+  CASE p_default.
+    WHEN 'X'.
+      CLEAR ps_sort.
+      ps_sort-fieldname = 'SSTAT'.
+      ps_sort-down = 'X'.
+      ps_sort-spos        = 1.
+      APPEND ps_sort TO pt_sort.
+
+      CLEAR ps_sort.
+      ps_sort-fieldname = 'DELAY_G'.
+      ps_sort-down = 'X'.
+      ps_sort-spos        = 2.
+      APPEND ps_sort TO pt_sort.
+
+      CLEAR ps_sort.
+      ps_sort-fieldname = 'DELAY_S'.
+      ps_sort-down = 'X'.
+      ps_sort-spos        = 3.
+      APPEND ps_sort TO pt_sort.
+
+      CLEAR ps_sort.
+      ps_sort-fieldname = 'ORDDT'.
+      ps_sort-up = 'X'.
+      ps_sort-spos        = 4.
+      APPEND ps_sort TO pt_sort.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_WAIT_SO_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_wait_so_list .
+  SELECT sonum cusnr creat reqdl orddt stats sstat descr
+    FROM ztpbsoh
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    WHERE pflag = ''
+    AND stats = 'W'.
+
+  DELETE gt_data
+  WHERE orddt NOT IN so_orddt
+  OR reqdl NOT IN so_reqdl
+  OR sonum NOT IN so_sonum
+  OR cusnr NOT IN so_cusnr.
+
+  LOOP AT gt_data INTO gs_data.
+
+    PERFORM get_arress.
+    PERFORM get_customer_name.
+    PERFORM get_gi_emp.
+    PERFORM get_emp_name USING gs_data-creat CHANGING gs_data-cname.
+    PERFORM get_emp_name USING gs_data-creat_g CHANGING gs_data-cname_g.
+    PERFORM count_delay.
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_RECEIVE_SO_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_receive_so_list .
+  SELECT sonum cusnr creat reqdl orddt stats sstat descr
+  FROM ztpbsoh
+  INTO CORRESPONDING FIELDS OF TABLE gt_data
+  WHERE pflag = ''
+  AND stats = 'R'
+  AND sstat = 'O'.
+
+  DELETE gt_data
+WHERE orddt NOT IN so_orddt
+OR reqdl NOT IN so_reqdl
+OR sonum NOT IN so_sonum
+OR cusnr NOT IN so_cusnr.
+
+  LOOP AT gt_data INTO gs_data.
+    PERFORM get_arress.
+    PERFORM get_customer_name.
+    PERFORM get_gi_emp.
+    PERFORM get_emp_name USING gs_data-creat CHANGING gs_data-cname.
+    PERFORM get_emp_name USING gs_data-creat_g CHANGING gs_data-cname_g.
+    PERFORM count_delay.
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_CLOSE_SO_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_close_so_list .
+  SELECT sonum cusnr creat reqdl orddt stats sstat descr
+    FROM ztpbsoh
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    WHERE pflag = ''
+    AND stats = 'R'
+    AND sstat = 'C'.
+
+  DELETE gt_data
+    WHERE orddt NOT IN so_orddt
+    OR reqdl NOT IN so_reqdl
+    OR sonum NOT IN so_sonum
+    OR cusnr NOT IN so_cusnr.
+
+  LOOP AT gt_data INTO gs_data.
+    SELECT SINGLE ginum pgidt descr
+      FROM ztpbgih
+      INTO (gs_data-ginum, gs_data-pgidt, gs_data-descr_g)
+      WHERE sonum = gs_data-sonum.
+
+    PERFORM get_arress.
+    PERFORM get_customer_name.
+    PERFORM get_gi_emp.
+    PERFORM get_emp_name USING gs_data-creat CHANGING gs_data-cname.
+    PERFORM get_emp_name USING gs_data-creat_g CHANGING gs_data-cname_g.
+    PERFORM count_delay.
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+  ENDLOOP.
+
+  PERFORM count_delay.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_ALL_SO_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_all_so_list .
+  SELECT sonum cusnr creat reqdl orddt stats sstat descr
+   FROM ztpbsoh
+   INTO CORRESPONDING FIELDS OF TABLE gt_data
+   WHERE pflag = ''.
+
+  DELETE gt_data
+    WHERE orddt NOT IN so_orddt
+    OR reqdl NOT IN so_reqdl
+    OR sonum NOT IN so_sonum
+    OR cusnr NOT IN so_cusnr.
+
+  IF p_creat IS NOT INITIAL.
+    DELETE gt_data WHERE creat <> p_creat.
+  ENDIF.
+
+  LOOP AT gt_data INTO gs_data.
+    SELECT SINGLE ginum pgidt descr
+      FROM ztpbgih
+      INTO (gs_data-ginum, gs_data-pgidt, gs_data-descr_g)
+      WHERE sonum = gs_data-sonum.
+
+    PERFORM get_arress.
+    PERFORM get_customer_name.
+    PERFORM get_gi_emp.
+    PERFORM get_emp_name USING gs_data-creat CHANGING gs_data-cname.
+    PERFORM get_emp_name USING gs_data-creat_g CHANGING gs_data-cname_g.
+    PERFORM count_delay.
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_RECEIVE_DELAY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM count_delay .
+  DATA: lv_trans   TYPE i, "운송리드타임
+        lv_plan_gi TYPE sy-datum, "출고 권장일
+        lv_address TYPE string. "배송지
+
+  IF gs_data-stats = 'W'.
+    gs_data-delay_s = sy-datum - gs_data-orddt. "주문 승인 지연일
+  ELSE.
+    gs_data-delay_s = 0.
+  ENDIF.
+
+  SELECT SINGLE adres
+    FROM ztpbcustom INTO lv_address
+    WHERE cusnr = gs_data-cusnr.
+
+  lv_trans = 1.  " 기본값
+
+  IF lv_address CP '*서울*'.
+    lv_trans = 0.
+  ELSEIF lv_address CP '*경기*' OR lv_address CP '*인천*'.
+    lv_trans = 1.
+  ELSEIF lv_address CP '*부산*' OR
+         lv_address CP '*대구*' OR
+         lv_address CP '*광주*' OR
+         lv_address CP '*대전*' OR
+         lv_address CP '*울산*' OR
+         lv_address CP '*세종*'.
+    lv_trans = 2.
+  ELSEIF lv_address CP '*강원도*' OR
+         lv_address CP '*충청북도*' OR
+         lv_address CP '*충청남도*' OR
+         lv_address CP '*전라북도*' OR
+         lv_address CP '*전라남도*' OR
+         lv_address CP '*경상북도*' OR
+         lv_address CP '*경상남도*'.
+    lv_trans = 2.
+  ELSEIF lv_address CP '*제주*'.
+    lv_trans = 3.
+  ENDIF.
+
+  " 2. 출고권장일
+  lv_plan_gi = gs_data-reqdl - lv_trans.
+  gs_data-pland = lv_plan_gi.
+
+  " 3. 지연일수
+  IF gs_data-sstat = 'O'.
+    gs_data-delay_g = sy-datum - lv_plan_gi. " 미출고-> 오늘 기준(출고예정일 대비)
+  ELSEIF gs_data-sstat = 'C'.
+    gs_data-delay_g = 0.
+*    gs_data-delay_g = gs_data-pgidt - lv_plan_gi. " 출고 완료-> 실제출고일 기준
+  ENDIF.
+
+  IF gs_data-delay_g < 0.
+    gs_data-delay_g = 0.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_ARRESS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_arress .
+  SELECT SINGLE adres FROM ztpbcustom
+    INTO gs_data-adres
+    WHERE cusnr = gs_data-cusnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_CUSTOMER_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_customer_name .
+  SELECT SINGLE custt FROM ztpbcustom
+    INTO gs_data-custt
+    WHERE cusnr = gs_data-cusnr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EMP_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_emp_name USING VALUE(p_creat)
+                  CHANGING cv_cname.
+  CALL FUNCTION 'ZFMPB_GET_EMP_NAME'
+    EXPORTING
+      iv_creat = p_creat
+    IMPORTING
+      ev_cname = cv_cname.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_GI_EMP
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_gi_emp .
+  SELECT SINGLE pernr
+    FROM ztpbcustom
+    INTO gs_data-creat_g
+    WHERE cusnr = gs_data-cusnr.
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

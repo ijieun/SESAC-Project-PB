@@ -1,0 +1,770 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1050_F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_PRODUCT_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_product_list .
+  " 목적: 상품 검색
+  " PRODUCT TABLE 에서 입력값에 해당하는 정보 집어넣기
+  " 조건: 상품번호 STPNR ~ ENPNR
+
+  " 1. if. 상품 번호 조회 조건이 둘다 빈 값일 때
+  IF zspb5001-pronr_s IS INITIAL AND zspb5001-pronr_f IS INITIAL.
+    CLEAR: gt_list.
+    SELECT a~pronr
+          pname
+          a~punit
+          a~waers
+          a~price
+          a~pflag
+          ptext
+      FROM ztpbproduct AS a INNER JOIN ztpbproduct_t AS b
+        ON a~pronr = b~pronr
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE b~langu = sy-langu.
+
+    IF sy-subrc <> 0.
+      MESSAGE: i001(zmcpb). " & & & & 일치하는 정보가 없습니다.
+      RETURN.
+    ENDIF.
+
+    " 2. else. 상품 번호 조회 조건이 하나라도 있을 때
+  ELSE.
+    CLEAR r_pronr[].
+    IF zspb5001-pronr_s IS NOT INITIAL AND zspb5001-pronr_f IS NOT INITIAL.
+      CLEAR: r_pronr.
+      r_pronr-sign = 'I'.
+      r_pronr-option = 'BT'.
+      r_pronr-low = zspb5001-pronr_s.
+      r_pronr-high = zspb5001-pronr_f.
+
+    ELSEIF zspb5001-pronr_s IS NOT INITIAL.
+      CLEAR: r_pronr.
+      r_pronr-sign = 'I'.
+      r_pronr-option = 'GE'.
+      r_pronr-low = zspb5001-pronr_s.
+
+    ELSEIF zspb5001-pronr_f IS NOT INITIAL.
+      CLEAR: r_pronr.
+      r_pronr-sign = 'I'.
+      r_pronr-option = 'LE'.
+      r_pronr-low = zspb5001-pronr_f.
+    ENDIF.
+
+    APPEND r_pronr.
+
+    CLEAR  gt_list.
+    SELECT a~pronr
+          pname
+          a~punit
+          a~waers
+          a~price
+          a~pflag
+          ptext
+      FROM ztpbproduct AS a INNER JOIN ztpbproduct_t AS b
+        ON a~pronr = b~pronr
+      INTO CORRESPONDING FIELDS OF TABLE gt_list
+      WHERE a~pronr IN r_pronr
+        AND b~langu = sy-langu.
+
+    IF sy-subrc <> 0.
+      MESSAGE: i001(zmcpb) WITH zspb5001-pronr_s '과' zspb5001-pronr_f '사이의'. " & & & & 일치하는 정보가 없습니다.
+      RETURN.
+    ENDIF.
+
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_CON
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_objects.
+  CREATE OBJECT go_con
+    EXPORTING
+*     parent                      =
+      container_name              = 'CON'
+*     style                       =
+*     lifetime                    = lifetime_default
+*     repid                       =
+*     dynnr                       =
+*     no_autodef_progid_dynnr     =
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+  CREATE OBJECT go_alv
+    EXPORTING
+*     i_shellstyle      = 0
+*     i_lifetime        =
+      i_parent          = go_con
+*     i_appl_events     = space
+*     i_parentdbg       =
+*     i_applogparent    =
+*     i_graphicsparent  =
+*     i_name            =
+      i_fcat_complete   = space
+    EXCEPTIONS
+      error_cntl_create = 1
+      error_cntl_init   = 2
+      error_cntl_link   = 3
+      error_dp_create   = 4
+      OTHERS            = 5.
+  IF sy-subrc <> 0.
+* MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*            WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv .
+  PERFORM: set_layo,
+          set_fcat,
+          set_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active               =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+*     i_structure_name              = 'ZSPB5002'
+*     is_variant                    =
+*     i_save                        =
+*     i_default                     = 'X'
+      is_layout                     = gs_layo
+*     is_print                      =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink                  =
+*     it_alv_graphics               =
+*     it_except_qinfo               =
+*     ir_salv_adapter               =
+    CHANGING
+      it_outtab                     = gt_list
+      it_fieldcatalog               = gt_fcat
+      it_sort                       = gt_sort
+*     it_filter                     =
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_PRODUCT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_product .
+  " 상품 등록하는 기능
+  DATA: ls_data   TYPE ztpbproduct,
+        ls_data_t TYPE ztpbproduct_t,
+        lv_num    TYPE numc04,
+        lv_pronr  TYPE zspb5003-pronr.
+
+  CLEAR: ls_data, ls_data_t.
+
+  IF zspb5003-pname IS INITIAL OR zspb5003-punit IS INITIAL OR
+    zspb5003-waers IS INITIAL OR zspb5003-price IS INITIAL.
+    MESSAGE i007(zmcpb) WITH '등록할 상품'. " & 정보를 모두 입력해주세요.
+    RETURN.
+  ENDIF.
+
+  MOVE-CORRESPONDING zspb5003 TO ls_data.
+  MOVE-CORRESPONDING zspb5003 TO ls_data_t.
+
+  CLEAR lv_num.
+  PERFORM get_product_number CHANGING lv_num.
+  CLEAR lv_pronr.
+  CONCATENATE 'PC' sy-datum+0(4) lv_num INTO lv_pronr.
+
+  ls_data-pronr = lv_pronr.
+
+  INSERT ztpbproduct FROM ls_data.
+
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+  ls_data_t-pronr = lv_pronr.
+  ls_data_t-langu = sy-langu.
+
+  INSERT ztpbproduct_t FROM ls_data_t.
+  COMMIT WORK.
+
+  IF sy-subrc = 0.
+    MESSAGE i012(zmcpb) WITH '상품번호 ' ls_data-pronr. " & & 등록되었습니다.
+
+    " 조회 화면으로 돌아가기
+    LEAVE TO SCREEN 0.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  UPDATE_PRODUCT_INFO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM update_product_info .
+  DATA: ls_data   TYPE ztpbproduct,
+        ls_data_t TYPE ztpbproduct_t.
+  CLEAR: ls_data, ls_data_t.
+
+  IF zspb5005-pronr = zspb5004-pronr AND zspb5005-pname = zspb5004-pname
+    AND  zspb5005-punit = zspb5004-punit AND zspb5005-waers = zspb5004-waers AND
+  zspb5005-price = zspb5004-price AND zspb5005-pflag = zspb5004-pflag
+     AND zspb5005-ptext = zspb5004-ptext.
+    MESSAGE i009(zmcpb) WITH '수정할 정보를'. " & 입력해주세요.
+    RETURN.
+
+  ENDIF.
+
+  IF  zspb5004-pname IS INITIAL
+    OR  zspb5004-punit IS INITIAL OR  zspb5004-waers IS INITIAL OR
+     zspb5004-price IS INITIAL.
+    MESSAGE i009(zmcpb) WITH '수정할 정보를'. " & 입력해주세요.
+    RETURN.
+  ENDIF.
+
+  MOVE-CORRESPONDING zspb5004 TO ls_data.
+  MOVE-CORRESPONDING zspb5004 TO ls_data_t.
+  ls_data_t-langu = sy-langu.
+
+
+
+  UPDATE ztpbproduct  FROM ls_data .
+  UPDATE ztpbproduct_t  FROM ls_data_t .
+  COMMIT WORK.
+  IF sy-subrc = 0.
+    MESSAGE i014(zmcpb) WITH '상품번호 ' ls_data-pronr. "& & 수정되었습니다.
+
+    " 조회 화면으로 돌아가기
+    LEAVE TO SCREEN 0.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECTED_ROW
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_selected_row USING p_check CHANGING VALUE(cv_rcnt) TYPE c
+                                             VALUE(cv_subrc) TYPE sy-subrc.
+  " 열 선택하는 기능
+  DATA: lt_row  TYPE lvc_t_row,
+        ls_row  TYPE lvc_s_row,
+        ls_data TYPE zspb5002,
+        lv_rcnt TYPE c LENGTH 2.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_row.
+  DESCRIBE TABLE lt_row LINES lv_rcnt.
+
+  CASE lv_rcnt.
+    WHEN '1'.
+      cv_subrc = 0.
+    WHEN '0'.
+      MESSAGE: i003(zmcpb) WITH p_check '레코드'. " & 할 &을(를) 선택하세요.
+      cv_subrc = 4.
+      RETURN.
+    WHEN OTHERS.
+      MESSAGE: i004(zmcpb) WITH p_check. "한 건만 & 가능합니다.
+      cv_subrc = 4.
+      RETURN.
+  ENDCASE.
+  LOOP AT lt_row INTO ls_row.
+    READ TABLE gt_list INDEX ls_row-index INTO ls_data.
+  ENDLOOP.
+
+  IF sy-subrc = 0.
+    CLEAR gv_pronr.
+    gv_pronr = ls_data-pronr.
+  ENDIF.
+
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT_0200
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default_0200 .
+  IF sy-langu = '3'.
+    gv_langu = 'Korean'.
+  ELSEIF sy-langu = 'E'.
+    gv_langu = 'English'.
+  ENDIF.
+
+  zspb5003-punit = 'EA'.
+  zspb5003-waers = 'KRW'.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT_0300
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default_0300 .
+  " screen 300의 기본값 설정하는 기능
+  DATA: ls_data TYPE zspb5004.
+
+  CLEAR zspb5004-pronr.
+  zspb5004-pronr = gv_pronr.
+
+  PERFORM get_selected_row_info USING zspb5004-pronr CHANGING ls_data.
+
+  MOVE-CORRESPONDING ls_data TO zspb5004.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT_0400
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default_0400 .
+  " screen 400의 기본값 설정하는 기능
+  DATA: ls_data TYPE zspb5005.
+
+  CLEAR zspb5005-pronr.
+  zspb5005-pronr = gv_pronr.
+
+  PERFORM get_selected_row_info USING zspb5005-pronr CHANGING ls_data.
+
+  MOVE-CORRESPONDING ls_data TO zspb5005.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECTED_ROW_INFO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_LS_DATA  text
+*----------------------------------------------------------------------*
+FORM get_selected_row_info USING VALUE(p_pronr) TYPE zspb5004-pronr
+                           CHANGING VALUE(cs_data) TYPE zspb5004.
+  CLEAR cs_data.
+  SELECT SINGLE  a~pronr
+                 pname
+                 a~punit
+                 a~waers
+                 a~price
+                 a~pflag
+                 ptext
+    FROM ztpbproduct AS a INNER JOIN ztpbproduct_t AS b
+      ON a~pronr = b~pronr
+    INTO CORRESPONDING FIELDS OF cs_data
+    WHERE a~pronr = p_pronr
+    AND langu = sy-langu.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_PRODUCT_NUMBER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_product_number CHANGING VALUE(cv_num) TYPE numc04.
+*  DATA: lv_num TYPE numc08.
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr             = '01'
+      object                  = 'ZNRPB5001'
+*     QUANTITY                = '1'
+*     SUBOBJECT               = ' '
+      toyear                  = sy-datum+0(4)
+*     IGNORE_BUFFER           = ' '
+    IMPORTING
+      number                  = cv_num
+*     QUANTITY                =
+*     RETURNCODE              =
+    EXCEPTIONS
+      interval_not_found      = 1
+      number_range_not_intern = 2
+      object_not_found        = 3
+      quantity_is_0           = 4
+      quantity_is_not_1       = 5
+      interval_overflow       = 6
+      buffer_overflow         = 7
+      OTHERS                  = 8.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  ROLLBACK WORK.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_PRICE_LENGTH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_price_length USING VALUE(p_price) TYPE zspb5003-price.
+  IF p_price > 1000000000000.
+    MESSAGE e000(zmcpb) WITH '금액은 1,000,000,000,000 이하만 입력 가능합니다.'.
+
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo .
+  gs_layo-cwidth_opt = 'X'.
+  gs_layo-zebra = 'X'.
+  gs_layo-sel_mode = 'A'.
+  gs_layo-excp_fname = 'LIGHT'. " 신호등 켜주기
+  gs_layo-excp_led = 'X'.
+
+*  LOOP AT gt_list INTO gs_list.
+*    IF gs_list-pflag = 'X'.
+*      gs_list-light = '1'.
+*    ELSE.
+*      gs_list-light = '3'.
+*    ENDIF.
+*    MODIFY gt_list FROM gs_list.
+*  ENDLOOP.
+
+  PERFORM turn_on_light.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+  FIELD-SYMBOLS <fs_fcat> TYPE lvc_s_fcat.
+
+  " 자동 필드 카탈로그 생성
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name       = 'ZSPB5002'
+    CHANGING
+      ct_fieldcat            = gt_fcat
+    EXCEPTIONS
+      inconsistent_interface = 1
+      program_error          = 2
+      OTHERS                 = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  " ALV 필드 출력 순서 조정
+  LOOP AT gt_fcat ASSIGNING <fs_fcat>.
+    CASE <fs_fcat>-fieldname.
+      WHEN 'PFLAG'.
+        <fs_fcat>-no_out = 'X'.
+      WHEN 'PRONR'.
+        <fs_fcat>-col_pos = 1.
+      WHEN 'PNAME'.
+        <fs_fcat>-col_pos = 2.
+      WHEN 'PRICE'.
+        <fs_fcat>-col_pos = 3.
+      WHEN 'WAERS'.
+        <fs_fcat>-col_pos = 4.
+      WHEN 'PUNIT'.
+        <fs_fcat>-col_pos = 5.
+      WHEN 'PTEXT'.
+        <fs_fcat>-col_pos = 6.
+
+    ENDCASE.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+  FIELD-SYMBOLS: <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'PRICE'.
+  <fs_sort>-down = 'X'.
+  <fs_sort>-spos = 1.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  TURN_ON_LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM turn_on_light .
+  " 목적: ALV에서 사용 불가능한 상품을 신호등 표시
+  LOOP AT gt_list ASSIGNING FIELD-SYMBOL(<fs>).
+    IF <fs>-pflag = 'X'.
+      <fs>-light = '1'.
+    ELSE.
+      <fs>-light = '3'.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  UPLOAD_EXCEL
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM upload_excel .
+  " 목적: 엑셀 업로드
+  DATA: lt_raw TYPE TABLE OF alsmex_tabline,
+        ls_raw TYPE alsmex_tabline.
+  DATA: lv_price_str TYPE string,
+        lv_price_num TYPE p DECIMALS 2.
+
+  CALL FUNCTION 'ALSM_EXCEL_TO_INTERNAL_TABLE'
+    EXPORTING
+      filename                = gv_file
+      i_begin_col             = 1
+      i_begin_row             = 2
+      i_end_col               = 7
+      i_end_row               = 100
+    TABLES
+      intern                  = lt_raw
+    EXCEPTIONS
+      inconsistent_parameters = 1
+      upload_ole              = 2
+      OTHERS                  = 3.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  LOOP AT lt_raw INTO ls_raw.
+    CASE ls_raw-col.
+      WHEN 1. gs_excel-pname = ls_raw-value.
+      WHEN 2. gs_excel-punit = ls_raw-value.
+      WHEN 3. gs_excel-waers = ls_raw-value.
+      WHEN 4. gs_excel-price = ls_raw-value.
+      WHEN 5. gs_excel-pflag = ls_raw-value.
+      WHEN 6. gs_excel-ptext = ls_raw-value.
+      WHEN 7. gs_excel-langu = ls_raw-value.
+    ENDCASE.
+
+    AT END OF row.
+      APPEND gs_excel TO gt_excel.
+      CLEAR gs_excel.
+    ENDAT.
+  ENDLOOP.
+  IF sy-subrc = 0.
+    MESSAGE s000(zmcpb) WITH '엑셀 업로드 완료' gs_excel-pname.
+  ELSE.
+    MESSAGE s000(zmcpb) WITH '엑셀 업로드 실패' gs_excel-pname.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  PROCESS_BDC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM process_bdc .
+  " 목적: BDC 실행
+  DATA: lv_price_num TYPE p DECIMALS 2,
+        lv_price_txt TYPE string.
+  LOOP AT gt_excel INTO gs_excel.
+
+    CLEAR gt_bdc.
+
+*    " 1. 100번 스크린 진입
+    PERFORM bdc_dynpro      USING 'SAPMZPB1050_BDC' '0100'.
+    PERFORM bdc_field       USING 'BDC_CURSOR' 'ZSPB5001-PRONR_S'.
+    PERFORM bdc_field       USING 'BDC_OKCODE' '=CREATE'.
+
+*    " 2. 200번 스크린 - BDC 데이터 넣기
+    PERFORM bdc_dynpro      USING 'SAPMZPB1050_BDC' '0200'.
+    PERFORM bdc_field       USING 'ZSPB5003-PUNIT' gs_excel-punit.
+    PERFORM bdc_field       USING 'ZSPB5003-WAERS' gs_excel-waers.
+
+    " 3. 200번 스크린 - create
+*    PERFORM bdc_dynpro      USING 'SAPMZPB1050_BDC' '0200'.
+    PERFORM bdc_field       USING 'BDC_CURSOR' 'ZSPB5003-LANGU'.
+*    PERFORM bdc_field       USING 'BDC_OKCODE' '=CREATE'.
+    PERFORM bdc_field       USING 'ZSPB5003-PNAME' gs_excel-pname.
+    PERFORM bdc_field       USING 'ZSPB5003-PUNIT' gs_excel-punit.
+    PERFORM bdc_field       USING 'ZSPB5003-WAERS' gs_excel-waers.
+
+    " 가격 변환 ( 소수점 변환 )
+    lv_price_num = gs_excel-price / 100.
+
+    DATA(lv_price) = |{ lv_price_num }|. " 숫자 → 문자열
+    REPLACE ALL OCCURRENCES OF '.' IN lv_price WITH ''.
+    CONDENSE lv_price NO-GAPS.
+    PERFORM bdc_field       USING 'ZSPB5003-PRICE' lv_price.
+    PERFORM bdc_field       USING 'ZSPB5003-PFLAG' gs_excel-pflag.
+    PERFORM bdc_field       USING 'ZSPB5003-PTEXT' gs_excel-ptext.
+
+    " 언어 1자리만
+    DATA(lv_langu) = gs_excel-langu(1).
+    PERFORM bdc_field       USING 'ZSPB5003-LANGU' lv_langu.
+
+    " 언어 1자리만
+*    DATA(lv_langu) = sy-langu(1).
+*    PERFORM bdc_field       USING 'ZSPB5003-LANGU' lv_langu.
+
+*    PERFORM bdc_field       USING 'ZSPB5003-LANGU' gs_excel-langu.
+    PERFORM bdc_field       USING 'BDC_OKCODE' '=CREATE'.
+
+    " 4. CALL TRANSACTION 실행
+    CALL TRANSACTION 'ZPB1050_BDC'
+    USING gt_bdc MODE 'N'. "A, E, N
+    WRITE sy-subrc.
+
+    IF sy-subrc <> 0.
+      MESSAGE i000(zmcpb) WITH 'BDC 실패'  gs_excel-pname .
+    ELSE.
+      MESSAGE i000(zmcpb) WITH 'BDC 성공'  gs_excel-pname.
+    ENDIF.
+
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC_DYNPRO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0972   text
+*      -->P_0973   text
+*----------------------------------------------------------------------*
+FORM bdc_dynpro  USING    VALUE(program)
+                          VALUE(dynpro).
+  " 목적: DYNPRO 세팅
+  CLEAR gs_bdc.
+  gs_bdc-program  = program.
+  gs_bdc-dynpro   = dynpro.
+  gs_bdc-dynbegin = 'X'.
+  APPEND gs_bdc TO gt_bdc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC_FIELD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0992   text
+*      -->P_GS_EXCEL_WAERS  text
+*----------------------------------------------------------------------*
+FORM bdc_field  USING fnam
+                      fval.
+  " 목적: 필드 세팅
+  CLEAR gs_bdc.
+  gs_bdc-fnam = fnam.
+  gs_bdc-fval = fval.
+  APPEND gs_bdc TO gt_bdc.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_FILE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_file .
+  " 파일 선택 다이얼로그
+  DATA: lt_filetable TYPE filetable,
+        ls_file      TYPE file_table,
+        lv_rc        TYPE i.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    EXPORTING
+      window_title = '엑셀 파일 선택'
+      file_filter  = 'Excel Files (*.xls;*.xlsx)|*.xls;*.xlsx|All Files (*.*)|*.*'
+    CHANGING
+      file_table   = lt_filetable
+      rc           = lv_rc
+    EXCEPTIONS
+      OTHERS       = 1.
+
+  IF sy-subrc = 0 AND lv_rc > 0.
+    READ TABLE lt_filetable INTO ls_file INDEX 1.
+    gv_file = ls_file-filename.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

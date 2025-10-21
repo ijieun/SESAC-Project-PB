@@ -1,0 +1,91 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2024TOP                                       Module Pool      SAPMZPB2024
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2024.
+*&---------------------------------------------------------------------*
+*& TABLES
+*&---------------------------------------------------------------------*
+TABLES: zspb2011.
+*&---------------------------------------------------------------------*
+*& COMMON
+*&---------------------------------------------------------------------*
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_dynnr TYPE sy-dynnr.
+*&---------------------------------------------------------------------*
+*& CONSTANTS
+*&---------------------------------------------------------------------*
+CONSTANTS: gc_w TYPE ztpbinvh-iflag VALUE 'W',  " 대기
+           gc_x TYPE ztpbinvh-iflag VALUE 'X',  " 승인
+           gc_c TYPE ztpbinvh-iflag VALUE 'C'.  " 취소
+*&---------------------------------------------------------------------*
+*& ALV
+*&---------------------------------------------------------------------*
+DATA: go_con_0100 TYPE REF TO cl_gui_custom_container,
+      go_alv_0100 TYPE REF TO cl_gui_alv_grid,
+      go_con_0110 TYPE REF TO cl_gui_custom_container,
+      go_alv_0110 TYPE REF TO cl_gui_alv_grid.
+
+DATA: gs_layo_h TYPE lvc_s_layo,
+      gs_layo_i TYPE lvc_s_layo,
+      gt_fcat_h TYPE lvc_t_fcat,
+      gt_fcat_i TYPE lvc_t_fcat.
+*&---------------------------------------------------------------------*
+*& RANGES
+*&---------------------------------------------------------------------*
+RANGES: gr_vendr  FOR ztpbvendor-vendr,
+        gr_custom FOR ztpbcustom-cusnr,
+        gr_invno  FOR ztpbinvh-invno,
+        gr_iflag  FOR ztpbinvh-iflag.
+DATA: gr_pdate TYPE ztpbdate.
+*&---------------------------------------------------------------------*
+*& DOMAIN
+*&---------------------------------------------------------------------*
+DATA: gt_domain    TYPE TABLE OF dd07v.
+*&---------------------------------------------------------------------*
+*& TABLE VARIABLE: 업체명, 상품명
+*&---------------------------------------------------------------------*
+DATA: gt_custom    TYPE TABLE OF ztpbcustom,
+      gt_vendor    TYPE TABLE OF ztpbvendor,
+      gt_product_t TYPE TABLE OF ztpbproduct_t.
+*&---------------------------------------------------------------------*
+*& ALV LIST
+*&---------------------------------------------------------------------*
+" 0100(조회)헤더
+DATA: BEGIN OF gs_list_h.
+    INCLUDE TYPE zspb2012.
+DATA: light  TYPE c,
+      lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list_h,
+      gt_list_h LIKE TABLE OF gs_list_h.
+
+" 0110(조회)아이템
+DATA: BEGIN OF gs_list_i.
+    INCLUDE TYPE zspb2012_1.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list_i,
+      gt_list_i LIKE TABLE OF gs_list_i.
+
+" 송장 승인
+DATA: gt_approve LIKE TABLE OF gs_list_h.
+
+" 송장 취소
+DATA: gt_cancel LIKE TABLE OF gs_list_h.
+*&---------------------------------------------------------------------*
+*& CLASS
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS: handle_double_click
+    FOR EVENT double_click OF cl_gui_alv_grid IMPORTING e_row e_column es_row_no.
+
+    CLASS-METHODS: handle_hotspot_click
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

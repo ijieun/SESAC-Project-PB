@@ -1,0 +1,35 @@
+**&---------------------------------------------------------------------*
+**&  Include           ZPB2051SCR
+**&---------------------------------------------------------------------*
+*
+**&---------------------------------------------------------------------*
+*" 필수 입력 조건
+**&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-t01.
+" 납기 진행중인 건 미포함 / 포함
+SELECTION-SCREEN BEGIN OF LINE.
+PARAMETERS pa_ra1  RADIOBUTTON GROUP gr1 DEFAULT 'X' USER-COMMAND uc.
+SELECTION-SCREEN COMMENT (20) TEXT-t03 FOR FIELD pa_ra1.
+
+SELECTION-SCREEN POSITION 40.
+PARAMETERS pa_ra2 RADIOBUTTON GROUP gr1.
+SELECTION-SCREEN COMMENT (20) TEXT-t04 FOR FIELD pa_ra2.
+
+SELECTION-SCREEN END OF LINE.
+
+SELECT-OPTIONS: so_vendr FOR ztpbvendor-vendr,
+                so_podat FOR ztpbpoh-podat.
+
+SELECTION-SCREEN END OF BLOCK b01.
+
+**&---------------------------------------------------------------------*
+*" 선택 입력 조건
+**&---------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b02 WITH FRAME TITLE TEXT-t02.
+SELECT-OPTIONS: so_stdat FOR ztpbgrh-stdat,
+                so_pronr FOR ztpbproduct-pronr, " 상품번호
+                so_pernr FOR ztpbvendor-pernr. " 담당자
+SELECTION-SCREEN END OF BLOCK b02.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

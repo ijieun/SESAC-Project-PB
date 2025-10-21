@@ -1,0 +1,467 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2040F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_MONTHLY_SUMMARY
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+
+ FORM get_monthly_summary .
+
+   DATA:
+     lv_year       TYPE string,
+     lv_month      TYPE string,
+     lv_month_from TYPE string,
+     lv_month_to   TYPE string,
+     lv_yyyymm     TYPE string,
+     lv_row_yyyymm TYPE string.
+
+   lv_year = pa_fyear.
+   lv_month_from = so_fperi-low.
+   lv_month_to = so_fperi-high.
+
+   CLEAR gt_month_summary.
+   DO lv_month_to - lv_month_from + 1 TIMES.
+     lv_month = lv_month_from + sy-index - 1.
+     IF lv_month < 1 OR lv_month > 12.
+       CONTINUE. " 1~12월만
+     ENDIF.
+     IF lv_month < 10.
+       lv_yyyymm = lv_year && '0' && lv_month.
+     ELSE.
+       lv_yyyymm = lv_year && lv_month.
+     ENDIF.
+     CLEAR gs_month_summary.
+     gs_month_summary-year_month    = lv_yyyymm.
+     gs_month_summary-count_total   = 0.
+     gs_month_summary-count_done    = 0.
+     gs_month_summary-count_pending = 0.
+     gs_month_summary-rate_done     = 0.
+     APPEND gs_month_summary TO gt_month_summary.
+   ENDDO.
+
+   DATA: lv_date_from TYPE sy-datum,
+         lv_date_to   TYPE sy-datum.
+
+   CONCATENATE lv_year lv_month_from '01' INTO lv_date_from.
+
+   IF lv_month_to < 10.
+     CONCATENATE lv_year '0' lv_month_to '01' INTO lv_date_to.
+   ELSE.
+     CONCATENATE lv_year lv_month_to '01' INTO lv_date_to.
+   ENDIF.
+
+   CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+     EXPORTING
+       day_in            = lv_date_to
+     IMPORTING
+       last_day_of_month = lv_date_to.
+
+   SELECT a~cflag,
+          b~pdate
+     FROM ztpbjonli AS a
+     INNER JOIN ztpbjonlh AS b ON a~jocum = b~jocum
+     INTO TABLE @DATA(gt_joined)
+     WHERE b~pdate BETWEEN @lv_date_from AND @lv_date_to.
+
+   LOOP AT gt_joined INTO DATA(ls_row).
+     lv_row_yyyymm = ls_row-pdate+0(6).
+     READ TABLE gt_month_summary ASSIGNING FIELD-SYMBOL(<fs>) WITH KEY year_month = lv_row_yyyymm.
+     IF sy-subrc = 0.
+       <fs>-count_total = <fs>-count_total + 1.
+       IF ls_row-cflag = 'X'.
+         <fs>-count_done = <fs>-count_done + 1.
+       ELSE.
+         <fs>-count_pending = <fs>-count_pending + 1.
+       ENDIF.
+     ENDIF.
+   ENDLOOP.
+
+   LOOP AT gt_month_summary ASSIGNING <fs>.
+     IF <fs>-count_total > 0.
+       <fs>-rate_done = ( <fs>-count_done * 100 ) / <fs>-count_total.
+     ELSE.
+       <fs>-rate_done = 0.
+     ENDIF.
+   ENDLOOP.
+
+   DATA: to_alv TYPE REF TO cl_salv_table.
+   cl_salv_table=>factory(
+     IMPORTING r_salv_table = to_alv
+     CHANGING  t_table      = gt_month_summary
+   ).
+
+   to_alv->get_columns( )->get_column( 'YEAR_MONTH'    )->set_long_text( '조회 년월' ).
+   to_alv->get_columns( )->get_column( 'COUNT_TOTAL'   )->set_long_text( '전체 전표 개수' ).
+   to_alv->get_columns( )->get_column( 'COUNT_DONE'    )->set_long_text( '반제 완료 전표 개수' ).
+   to_alv->get_columns( )->get_column( 'COUNT_PENDING' )->set_long_text( '반제 미완료 전표 개수' ).
+   to_alv->get_columns( )->get_column( 'RATE_DONE'     )->set_long_text( '반제 완료율(%)' ).
+   to_alv->display( ).
+
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DETAILED_CLEARING
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM get_detailed_clearing .
+
+
+   DATA: lv_gname TYPE char50,
+         lv_glacc TYPE n LENGTH 8.
+
+   " 반제 전표 번호로 검색하면 반제 전표 번호와 일치하는 전표끼리 조회되도록
+   IF so_cljo-low IS NOT INITIAL OR so_cljo-high IS NOT INITIAL.
+
+     SELECT
+     jocum
+     itnum
+     glacc
+     dbcrf
+     price
+     pokey
+     waers
+     descr
+     cflag
+     cljocum
+     cldate
+       FROM ztpbjonli
+       INTO CORRESPONDING FIELDS OF TABLE gt_list
+     WHERE cflag = 'X'
+      AND cljocum IN so_cljo. " 반제전표번호 search help
+
+     " 계정과목명 불러오기
+     LOOP AT gt_list INTO gs_list.
+       lv_glacc = gs_list-glacc.
+       CALL FUNCTION 'ZFMPB_GET_GLACC_NAME'
+         EXPORTING
+           iv_glacc         = lv_glacc
+         IMPORTING
+           ev_gname         = lv_gname
+         EXCEPTIONS
+           format_exception = 1
+           OTHERS           = 2.
+       IF sy-subrc = 0.
+         gs_list-gname = lv_gname.
+       ELSE.
+         gs_list-gname = '계정과목 코드가 존재하지 않습니다.'.
+       ENDIF.
+       MODIFY gt_list FROM gs_list.
+     ENDLOOP.
+
+   ENDIF.
+
+   IF so_cljo-low IS NOT INITIAL OR so_cljo-high IS NOT INITIAL.
+
+     SELECT
+     jocum
+     itnum
+     glacc
+     dbcrf
+     price
+     pokey
+     waers
+     descr
+     cflag
+     cljocum
+     cldate
+       FROM ztpbjonli
+       INTO CORRESPONDING FIELDS OF TABLE gt_list
+     WHERE cflag = 'X'
+*      AND cldate IN so_cdate
+      AND cljocum IN so_cljo. " 반제전표번호 search help
+
+     LOOP AT gt_list INTO gs_list.
+       lv_glacc = gs_list-glacc.
+       CALL FUNCTION 'ZFMPB_GET_GLACC_NAME'
+         EXPORTING
+           iv_glacc         = lv_glacc
+         IMPORTING
+           ev_gname         = lv_gname
+         EXCEPTIONS
+           format_exception = 1
+           OTHERS           = 2.
+       IF sy-subrc = 0.
+         gs_list-gname = lv_gname.
+       ELSE.
+         gs_list-gname = '계정과목 코드가 존재하지 않습니다.'.
+       ENDIF.
+       MODIFY gt_list FROM gs_list.
+     ENDLOOP.
+
+   ENDIF.
+
+
+
+ ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM create_alv .
+
+
+   CREATE OBJECT go_con
+     EXPORTING
+       container_name = 'CON'.
+
+   IF sy-subrc <> 0.
+     MESSAGE i000(zmcpb) WITH 'Create Custom Container Error'.
+   ENDIF.
+
+
+   CREATE OBJECT go_alv
+     EXPORTING
+       i_parent = go_con.
+   IF sy-subrc <> 0.
+     MESSAGE i000(zmcpb) WITH 'Create Alv Error'.
+   ENDIF.
+
+
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM display_alv .
+
+   CALL METHOD go_alv->set_table_for_first_display
+     EXPORTING
+       i_structure_name = 'ZSPB4006'
+*      i_default        = 'X'
+       is_layout        = gs_layo
+     CHANGING
+       it_outtab        = gt_list
+       it_fieldcatalog  = gt_fcat
+       it_sort          = gt_sort.
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM set_default .
+
+   pa_fyear = sy-datum(4).
+
+   so_fperi-high = sy-datum+4(2).
+   APPEND so_fperi.
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM set_layout .
+
+   CLEAR gs_layo.
+
+   gs_layo-zebra = 'X'.
+   gs_layo-cwidth_opt = 'A'.
+
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM set_sort .
+
+   CLEAR gt_sort.
+   gs_sort-spos = '1'.
+   gs_sort-fieldname = 'CLJOCUM'.
+   gs_sort-down = ''. "오름차순
+   APPEND gs_sort TO gt_sort.
+   CLEAR gs_sort.
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_CDONE_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM get_cdone_data .
+
+   DATA:
+     lv_year       TYPE string,
+     lv_month      TYPE string,
+     lv_month_from TYPE string,
+     lv_month_to   TYPE string,
+     lv_yyyymm     TYPE string,
+     lv_row_yyyymm TYPE string.
+
+   lv_year = pa_fyear.
+   lv_month_from = so_fperi-low.
+   lv_month_to = so_fperi-high.
+
+   CLEAR gt_month_summary.
+   DO lv_month_to - lv_month_from + 1 TIMES.
+     lv_month = lv_month_from + sy-index - 1.
+     IF lv_month < 10.
+       lv_yyyymm = lv_year && '0' && lv_month.
+     ELSE.
+       lv_yyyymm = lv_year && lv_month.
+     ENDIF.
+
+     CLEAR gs_month_summary.
+     gs_month_summary-year_month    = lv_yyyymm.
+     gs_month_summary-count_total   = 0.
+     gs_month_summary-count_done    = 0.
+     gs_month_summary-count_pending = 0.
+     gs_month_summary-rate_done     = 0.
+     APPEND gs_month_summary TO gt_month_summary.
+   ENDDO.
+
+   DATA: lv_date_from TYPE sy-datum,
+         lv_date_to   TYPE sy-datum.
+
+   CONCATENATE lv_year lv_month_from '01' INTO lv_date_from.
+
+   IF lv_month_to < 10.
+     CONCATENATE lv_year '0' lv_month_to '01' INTO lv_date_to.
+   ELSE.
+     CONCATENATE lv_year lv_month_to '01' INTO lv_date_to.
+   ENDIF.
+
+   CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+     EXPORTING
+       day_in            = lv_date_to
+     IMPORTING
+       last_day_of_month = lv_date_to.
+
+   SELECT a~cflag,
+          b~pdate
+     FROM ztpbjonli AS a
+     INNER JOIN ztpbjonlh AS b ON a~jocum = b~jocum
+     INTO TABLE @DATA(gt_joined)
+     WHERE b~pdate BETWEEN @lv_date_from AND @lv_date_to.
+
+   LOOP AT gt_joined INTO DATA(ls_row).
+     lv_row_yyyymm = ls_row-pdate+0(6).
+     READ TABLE gt_month_summary ASSIGNING FIELD-SYMBOL(<fs>) WITH KEY year_month = lv_row_yyyymm.
+     IF sy-subrc = 0.
+       <fs>-count_total = <fs>-count_total + 1.
+       IF ls_row-cflag = 'X'.
+         <fs>-count_done = <fs>-count_done + 1.
+       ELSE.
+         <fs>-count_pending = <fs>-count_pending + 1.
+       ENDIF.
+     ENDIF.
+   ENDLOOP.
+
+   " 완료율 계산 & SELECT-OPTIONS 범위 필터링
+   DATA: lt_filtered TYPE TABLE OF ty_month_summary,
+         ls_summary  TYPE ty_month_summary,
+         lv_rate     TYPE f,
+         lv_low      TYPE f,
+         lv_high     TYPE f,
+         lv_in_range TYPE abap_bool.
+
+   " 완료율 계산
+   LOOP AT gt_month_summary INTO ls_summary.
+     IF ls_summary-count_total > 0.
+       ls_summary-rate_done = ( ls_summary-count_done * 100 ) / ls_summary-count_total.
+     ELSE.
+       ls_summary-rate_done = 0.
+     ENDIF.
+
+     lv_rate = CONV f( ls_summary-rate_done ).
+     lv_in_range = abap_false.
+
+     LOOP AT so_cdone INTO DATA(ls_range).
+       lv_low = CONV f( ls_range-low ).
+       lv_high = CONV f( ls_range-high ).
+
+       IF lv_rate >= lv_low AND lv_rate <= lv_high.
+         lv_in_range = abap_true.
+         EXIT.
+       ENDIF.
+     ENDLOOP.
+
+     IF lv_in_range = abap_true OR so_cdone[] IS INITIAL.
+       APPEND ls_summary TO lt_filtered.
+     ENDIF.
+   ENDLOOP.
+
+   IF lt_filtered IS INITIAL.
+     MESSAGE i000(zmcpb) WITH '입력하신 완료율과 일치하는 월이 존재하지 않습니다.'.
+     EXIT.
+   ENDIF.
+
+   " 출력
+   LOOP AT lt_filtered INTO ls_summary.
+     WRITE: / ls_summary-year_month, ls_summary-rate_done.
+   ENDLOOP.
+
+
+ ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SO_CLJO_CHECK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+ FORM so_cljo_check .
+
+   LOOP AT so_cljo.
+     IF so_cljo-option = 'EQ' OR so_cljo-option = 'BT'.
+
+       IF so_cljo-low IS NOT INITIAL.
+         SELECT SINGLE cljocum FROM ztpbjonli INTO @DATA(low)
+           WHERE cljocum = @so_cljo-low.
+         IF sy-subrc <> 0.
+           MESSAGE e039(zmcpb). "서치헬프에 있는 반제 전표번호만 입력 가능합니다.
+         ENDIF.
+       ENDIF.
+
+       IF so_cljo-high IS NOT INITIAL.
+         SELECT SINGLE cljocum FROM ztpbjonli INTO @DATA(high)
+           WHERE cljocum = @so_cljo-high.
+         IF sy-subrc <> 0.
+           MESSAGE e039(zmcpb). "서치헬프에 있는 반제 전표번호만 입력 가능합니다.
+           RETURN.
+         ENDIF.
+       ENDIF.
+
+     ENDIF.
+   ENDLOOP.
+
+ ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,50 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1030_TOP                                      Module Pool      SAPMZPB1030
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1030.
+
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc.
+
+" Screen 100 Condition
+DATA: gv_fullname TYPE ddtext.
+
+" Screen 100 ALV List
+TABLES: zspb3001.
+DATA: gs_data TYPE zspb3001,
+      gt_data LIKE TABLE OF gs_data.
+
+DATA: gs_emp LIKE ztpbemp,
+      gt_emp LIKE TABLE OF gs_emp.
+
+" Screen 200, 300, 400
+TABLES zspb3002.
+
+" Screen 300 Previous Info
+*DATA: gs_pinfo TYPE zspb3002,
+*      gt_pinfo LIKE TABLE OF gs_pinfo.
+DATA: BEGIN OF gs_pinfo,
+        pernr TYPE zspb3002-pernr,
+        ename TYPE zspb3002-lname,
+        fname TYPE zspb3002-fname,
+        pname TYPE zspb3002-pname,
+        custt TYPE zspb3002-custt,
+        phone TYPE zspb3002-phone,
+        adres TYPE zspb3002-adres,
+        pflag TYPE zspb3002-pflag,
+      END OF gs_pinfo,
+      gt_pinfo LIKE TABLE OF gs_pinfo.
+
+" ALV Components ( Screen 0100 )
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

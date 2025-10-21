@@ -1,0 +1,188 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2040O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH'[FI] 전표 조회 & 수동 반제 PROGRAM'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+
+  PERFORM set_gs_list-light.
+  PERFORM set_layout.
+
+  IF go_con IS INITIAL.
+    PERFORM create_alv.
+
+    PERFORM display_alv.
+
+  ELSE.
+    CALL METHOD go_alv->refresh_table_display.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+  SET PF-STATUS 'S200'.
+  SET TITLEBAR 'T200'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0300 OUTPUT.
+  SET PF-STATUS 'S300'.
+  SET TITLEBAR 'T300'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0200 OUTPUT.
+
+  PERFORM set_light.
+  PERFORM set_layout.
+
+  IF go_item IS INITIAL.
+    PERFORM create_item_alv.
+
+    PERFORM display_item_alv.
+  ELSE.
+    CALL METHOD go_item_alv->refresh_table_display.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_light .
+
+  LOOP AT gt_jitem_list INTO gs_jitem_list.
+    " 미결 상태인 경우
+    IF gs_jitem_list-cflag = ''.
+      gs_jitem_list-light = '1'. " 빨간불(미결)
+
+      " 반제 상태인 경우
+    ELSEIF gs_jitem_list-cflag = 'X'.
+      gs_jitem_list-light = '3'. " 초록불(반제)
+
+    ENDIF.
+    MODIFY gt_jitem_list FROM gs_jitem_list.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0300 OUTPUT.
+
+  PERFORM set_gs_clitem_list-light.
+  PERFORM set_layout.
+
+  " 반제할 전표 item alv
+
+  IF go_clitem IS INITIAL.
+
+    PERFORM create_clitem_alv.
+    PERFORM display_clitem_alv.
+
+  ELSE.
+    CALL METHOD go_clitem_alv->refresh_table_display.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0101 OUTPUT.
+  SET PF-STATUS 'S101'.
+  SET TITLEBAR 'T101'.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0101 OUTPUT.
+
+  PERFORM set_gs_poplist-light.
+  PERFORM set_layout.
+
+  IF go_popup IS INITIAL.
+
+    PERFORM create_go_popup_alv.
+    PERFORM display_go_popup_alv.
+
+  ELSE.
+    CALL METHOD go_popup_alv->refresh_table_display.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0400  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0400 OUTPUT.
+  SET PF-STATUS 'S400'.
+  SET TITLEBAR 'T400'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0400  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0400 OUTPUT.
+
+  IF go_jh IS INITIAL.
+
+    PERFORM create_go_jh.
+    PERFORM display_go_jh_alv.
+
+  ELSE.
+    CALL METHOD go_jh_alv->refresh_table_display.
+
+  ENDIF.
+
+  IF go_ji IS INITIAL.
+
+    PERFORM create_go_ji.
+    PERFORM display_go_ji_alv.
+
+  ELSE.
+    CALL METHOD go_ji_alv->refresh_table_display.
+
+  ENDIF.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

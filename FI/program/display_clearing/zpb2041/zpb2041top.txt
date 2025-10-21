@@ -1,0 +1,65 @@
+*&---------------------------------------------------------------------*
+*& Include ZPB2040TOP                                        Report ZPB2040
+*&
+*&---------------------------------------------------------------------*
+REPORT zpb2040.
+
+
+TABLES: ztpbjonlh,
+        ztpbjonli,
+        ZSPB4023.
+
+" ALV 선언
+
+TYPES: BEGIN OF ty_balance,
+         glacc TYPE zepb_glacc,
+         gname TYPE zepb_gname, " 계정명 (조인할 필드)
+         gtype TYPE zepb_gtype, " 계정유형
+         waers TYPE zepb_waers, " 화폐단위
+         dssum TYPE p DECIMALS 0, " 차변합계
+         dhsum TYPE p DECIMALS 0, " 대변합계
+         enbal TYPE p DECIMALS 0, " 최종 잔액
+       END OF ty_balance.
+
+DATA: gt_balance TYPE TABLE OF ty_balance,
+      gs_balance TYPE ty_balance.
+
+DATA: gt_items TYPE TABLE OF ztpbjonli,
+      gs_item   TYPE ztpbjonli.
+
+" 계정과목 조인
+    TYPES: BEGIN OF ty_glmast,
+         glacc TYPE zepb_glacc,
+         gname TYPE zepb_gname,
+         gtype TYPE zepb_gtype,
+         waers TYPE zepb_waers,
+       END OF ty_glmast.
+
+DATA: gt_glmast TYPE TABLE OF ty_glmast,
+      gs_glmast TYPE ty_glmast.
+
+
+" SELECTION-SCREEN
+" 기본 조회 조건
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-t01.
+
+PARAMETERS pa_fyear TYPE ztpbjonlh-fyear OBLIGATORY. "회계연도
+PARAMETERS pa_fperi TYPE ztpbjonlh-fperi OBLIGATORY. "회계기간
+SELECT-OPTIONS SO_FWEEK FOR SY-DATUM OBLIGATORY. "회계주차
+
+SELECTION-SCREEN END OF BLOCK b01.
+
+DATA: go_alv  TYPE REF TO cl_gui_alv_grid,
+      go_con  TYPE REF TO cl_gui_custom_container,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gs_layo TYPE lvc_s_layo,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr LIKE sy-dynnr.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,181 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1020I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      CLEAR: gv_subrc, gr_plant[].
+      PERFORM set_plant_range CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM select_plant_list.
+
+    WHEN 'INSERT'.
+      PERFORM set_cntry.
+      CALL SCREEN 0200.
+      CLEAR zspb2003.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '수정'(t05)
+                             CHANGING zspb2004
+                                      gv_subrc.
+      IF gv_subrc IS INITIAL.
+        MOVE-CORRESPONDING zspb2004 TO gs_before. " 수정 전 레코드
+        CALL SCREEN 0300.
+
+      ENDIF.
+
+    WHEN 'DETAIL'.
+      CLEAR zspb2001.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '조회'(t06)
+                             CHANGING zspb2005
+                                      gv_subrc.
+      IF gv_subrc IS INITIAL.
+        CALL SCREEN 0400.
+
+      ENDIF.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      CLEAR: gv_subrc, gr_plant[].
+      PERFORM set_plant_range CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM select_plant_list.
+
+    WHEN 'INSERT'.
+      CLEAR: gv_subrc.
+      PERFORM check_fields USING    zspb2003-plant
+                                    zspb2003-pname
+                                    zspb2003-cityn
+                                    zspb2003-cntry
+                           CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM insert_plant.
+
+    WHEN 'BDC'.
+      CLEAR: gv_subrc.
+      PERFORM get_excel_data CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM bdc.
+      CLEAR gv_file.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM check_fields USING    zspb2004-plant
+                                    zspb2004-pname
+                                    zspb2004-cityn
+                                    zspb2004-cntry
+                           CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM update_plant.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_DATA_FILE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_data_file INPUT.
+  CALL FUNCTION 'F4_FILENAME'
+    IMPORTING
+      file_name = gv_file.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

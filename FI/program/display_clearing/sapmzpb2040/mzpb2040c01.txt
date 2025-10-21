@@ -1,0 +1,119 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2040C01
+*&---------------------------------------------------------------------*
+
+  CLASS lcl_event_handler IMPLEMENTATION.
+
+
+    METHOD handle_hotspot_click.
+
+      DATA lv_refdo TYPE zspb4005-refdo.
+      DATA ls_data TYPE zspb4005.
+
+      CASE e_column_id. "TOP에 선언한 클릭 컬럼 정보
+
+          "참조문서에 해당하는 프로그램의 detail screen으로 이동
+        WHEN 'REFDO'.
+          READ TABLE gt_list INTO gs_list INDEX e_row_id. "e_row-index.
+          IF sy-subrc = 0.
+            lv_refdo = gs_list-refdo.
+
+            " 입고 DETAIL SCREEN  " ZPB4050D
+            IF lv_refdo CP 'GR*'.
+              SET PARAMETER ID 'ZPB4050CD' FIELD lv_refdo.
+              CALL TRANSACTION 'ZPB4050CD' AND SKIP FIRST SCREEN.
+
+              " 출고 DATAIL SCREEN " ZPB4010D
+            ELSEIF lv_refdo CP 'GI*'.
+              SET PARAMETER ID 'ZPB4010D' FIELD lv_refdo.
+              CALL TRANSACTION 'ZPB4010D' AND SKIP FIRST SCREEN.
+
+              " 송장 DETAIL SCREEN " ZPB2020D
+            ELSEIF lv_refdo CP 'IV*'.
+              SET PARAMETER ID 'ZPB2022D' FIELD lv_refdo.
+              CALL TRANSACTION 'ZPB2022D' AND SKIP FIRST SCREEN.
+
+            ENDIF.
+          ENDIF.
+
+
+          "전표 헤더에 해당하는 라인 아이템 가져오기
+        WHEN 'JOCUM'.
+          READ TABLE gt_list INDEX e_row_id INTO ls_data.
+          IF sy-subrc = 0.
+
+            " 내가 선택한 행의 전표번호
+            DATA(lv_selected_jocum) = ls_data-jocum.
+
+            CLEAR gt_poplist.
+            SELECT
+            a~jocum
+            a~itnum
+            a~glacc
+            a~dbcrf
+            a~price
+            a~pokey
+            a~waers
+            a~descr
+            a~cflag
+            a~cljocum
+            a~cldate
+            b~gname
+              FROM ztpbjonli AS a INNER JOIN ztpbgla AS b
+              ON a~glacc = b~glacc
+              INTO CORRESPONDING FIELDS OF TABLE gt_poplist
+              WHERE a~jocum EQ lv_selected_jocum.
+
+            " 각 라인별로 cflag 값에 따라 아이콘 세팅
+            LOOP AT gt_poplist INTO gs_poplist.
+              IF gs_poplist-cflag = 'X'.
+                gs_poplist-cflagi = '@01@'.   " 체크 아이콘
+              ELSE.
+                gs_poplist-cflagi = '@02@'.  " X 아이콘
+              ENDIF.
+              MODIFY gt_poplist FROM gs_poplist INDEX sy-tabix TRANSPORTING cflagi.
+            ENDLOOP.
+
+            CALL SCREEN 0101 STARTING AT 30 30.
+          ENDIF.
+
+
+          CLEAR lv_selected_jocum.
+
+          SELECT
+           a~jocum
+           a~itnum
+           a~glacc
+           a~dbcrf
+           a~price
+           a~pokey
+           a~waers
+           a~descr
+           a~cflag
+           a~cljocum
+           a~cldate
+           b~gname
+        FROM ztpbjonli AS a INNER JOIN ztpbgla AS b
+        ON a~glacc = b~glacc
+        INTO CORRESPONDING FIELDS OF TABLE gt_poplist
+        WHERE a~jocum EQ lv_selected_jocum.
+
+          " 각 라인별로 cflag 값에 따라 아이콘 세팅
+          LOOP AT gt_poplist INTO gs_poplist.
+            IF gs_poplist-cflag = 'X'.
+              gs_poplist-cflagi = '@01@'.   " 체크 아이콘
+            ELSE.
+              gs_poplist-cflagi = '@02@'.  " X 아이콘
+            ENDIF.
+            MODIFY gt_poplist FROM gs_poplist INDEX sy-tabix TRANSPORTING cflagi.
+          ENDLOOP.
+
+        WHEN OTHERS.
+      ENDCASE.
+
+    ENDMETHOD.
+
+  ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

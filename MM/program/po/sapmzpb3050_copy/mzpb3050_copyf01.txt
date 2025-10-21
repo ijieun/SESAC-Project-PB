@@ -1,0 +1,1073 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB3050F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_PO_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM get_po_list  CHANGING cv_subrc.
+  " 목적 : MAIN SCREEN의 PO ALV 리스트를 불러옴
+  DATA: lr_orddt TYPE RANGE OF ztpbpoh-podat,
+        ls_orddt LIKE LINE OF lr_orddt.
+  DATA: lr_ponum TYPE RANGE OF ztpbpoh-ponum,
+        ls_ponum LIKE LINE OF lr_ponum.
+  CLEAR: lr_orddt, ls_orddt.
+
+  IF zspb5010-stats_w IS INITIAL
+   AND zspb5010-stats_r IS INITIAL
+   AND zspb5010-stats_x IS INITIAL.
+    zspb5010-stats_w = 'X'.  " 대기(W) 버튼 기본 선택
+  ENDIF.
+
+  " RANGE 범위 조건
+  IF zspb5010-orddt_l IS NOT INITIAL AND zspb5010-orddt_h IS NOT INITIAL.
+    ls_orddt-sign   = 'I'.
+    ls_orddt-option = 'BT'.
+    ls_orddt-low    = zspb5010-orddt_l.
+    ls_orddt-high   = zspb5010-orddt_h.
+    APPEND ls_orddt TO lr_orddt.
+
+  ELSEIF zspb5010-orddt_l IS NOT INITIAL.
+    ls_orddt-sign   = 'I'.
+    ls_orddt-option = 'EQ'. " 동일
+    ls_orddt-low    = zspb5010-orddt_l.
+    APPEND ls_orddt TO lr_orddt.
+
+  ELSEIF zspb5010-orddt_h IS NOT INITIAL.
+    ls_orddt-sign   = 'I'.
+    ls_orddt-option = 'LE'. " 이하
+    ls_orddt-low    = zspb5010-orddt_h.
+    APPEND ls_orddt TO lr_orddt.
+  ENDIF.
+
+  IF zspb5010-ponum_l IS NOT INITIAL AND zspb5010-ponum_h IS NOT INITIAL.
+    ls_ponum-sign   = 'I'.
+    ls_ponum-option = 'BT'.
+    ls_ponum-low    = zspb5010-ponum_l.
+    ls_ponum-high   = zspb5010-ponum_h.
+    APPEND ls_ponum TO lr_ponum.
+
+  ELSEIF zspb5010-ponum_l IS NOT INITIAL.
+    ls_ponum-sign   = 'I'.
+    ls_ponum-option = 'EQ'. " 동일
+    ls_ponum-low    = zspb5010-ponum_l.
+    APPEND ls_ponum TO lr_ponum.
+
+
+  ELSEIF zspb5010-ponum_h IS NOT INITIAL.
+    ls_ponum-sign   = 'I'.
+    ls_ponum-option = 'LE'. " 이하
+    ls_ponum-low    = zspb5010-ponum_h.
+    APPEND ls_ponum TO lr_ponum.
+  ENDIF.
+
+  " PO ALV LIST 취득
+  CLEAR gt_list.
+  SELECT ponum
+         vendr
+         waers
+         creat
+         podat
+         dedat
+         stats
+         descr
+    FROM ztpbpoh
+    INTO CORRESPONDING FIELDS OF TABLE gt_list
+    WHERE podat IN lr_orddt
+      AND ponum IN lr_ponum
+      AND pflag <> 'X'.
+
+  IF sy-subrc <> 0.
+    cv_subrc = 4.
+  ENDIF.
+
+  " 공급업체 조건 필터링
+  IF zspb5010-vendr IS NOT INITIAL.
+    DELETE gt_list WHERE vendr <> zspb5010-vendr.
+  ENDIF.
+
+  IF gt_list IS INITIAL.
+    cv_subrc = 4.
+  ENDIF.
+
+
+  " 주문상태 Radio Button 필터링
+  IF zspb5010-stats_w = 'X'.
+    DELETE gt_list WHERE stats = 'X' OR stats = 'R'.
+  ELSEIF  zspb5010-stats_r = 'X'.
+    DELETE gt_list WHERE stats = 'W' OR stats = 'X'.
+  ELSEIF  zspb5010-stats_x = 'X'.
+    DELETE gt_list WHERE stats = 'W' OR stats = 'R'.
+
+  ENDIF.
+
+  IF gt_list IS INITIAL.
+    cv_subrc = 4.
+  ENDIF.
+
+  CLEAR gs_list.
+  LOOP AT gt_list INTO gs_list.
+    " 1. 목적 : 공급업체명 취득
+    PERFORM get_vendor_name USING gs_list-vendr
+                            CHANGING gs_list-vendt.
+
+
+*    " 2. 목적 : 생성자명 취득
+    PERFORM get_pernr_name USING gs_list-creat
+                          CHANGING gs_list-cname.
+
+*    " 3. 목적 :  주문 상태 FIXED VALUE 취득
+    PERFORM get_domain_value USING 'ZDPB_OSTAT'
+                             CHANGING gs_list-stats
+                                      gs_list-stats_t.
+
+    " 4. 목적 : 총금액 취득
+    PERFORM get_total_price USING gs_list-ponum
+                            CHANGING gs_list-total.
+
+    MODIFY gt_list FROM gs_list.
+    CLEAR gs_list.
+  ENDLOOP.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0079   text
+*      -->P_GO_CON  text
+*      -->P_GO_ALV  text
+*----------------------------------------------------------------------*
+FORM create_alv  USING   VALUE(p_con_name)
+                               po_con TYPE REF TO cl_gui_custom_container
+                               po_alv TYPE REF TO cl_gui_alv_grid.
+
+  CREATE OBJECT po_con
+    EXPORTING
+      container_name              = p_con_name
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+    MESSAGE a000(zmcpb) WITH 'Create Customm Conatiner Error'.
+  ENDIF.
+
+  CREATE OBJECT po_alv
+    EXPORTING
+      i_parent          = po_con
+    EXCEPTIONS
+      error_cntl_create = 1
+      error_cntl_init   = 2
+      error_cntl_link   = 3
+      error_dp_create   = 4
+      OTHERS            = 5.
+  IF sy-subrc <> 0.
+    MESSAGE a000(zmcpb) WITH 'Create ALV Error'.
+  ENDIF.
+
+  CREATE OBJECT go_handler.
+  SET HANDLER go_handler->handler_hotspot_click FOR go_alv ACTIVATION 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_ALV  text
+*      -->P_0118   text
+*      <--P_GS_LAYO  text
+*      <--P_GT_LIST  text
+*      <--P_GT_FCAT  text
+*----------------------------------------------------------------------*
+FORM display_alv  USING    VALUE(po_alv) TYPE REF TO cl_gui_alv_grid
+                           VALUE(p_stname)
+
+                        CHANGING ps_layo TYPE lvc_s_layo
+                                 pt_outtab
+                                 pt_fcat TYPE lvc_t_fcat
+                                 pt_sort TYPE lvc_t_sort.
+  CALL METHOD po_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name              = p_stname
+      is_layout                     = ps_layo
+    CHANGING
+      it_outtab                     = pt_outtab
+      it_fieldcatalog               = pt_fcat
+      it_sort                       = pt_sort
+    EXCEPTIONS
+      invalid_parameter_combination = 1
+      program_error                 = 2
+      too_many_lines                = 3
+      OTHERS                        = 4.
+  IF sy-subrc <> 0.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0103   text
+*      <--P_GS_LAYO  text
+*----------------------------------------------------------------------*
+FORM set_layo  USING    VALUE(p_variant) TYPE c
+                     CHANGING cs_layo TYPE lvc_s_layo.
+  CLEAR cs_layo.
+
+  CASE p_variant.
+    WHEN 'P'.
+      cs_layo-cwidth_opt = 'A'.
+      cs_layo-zebra = 'X'.
+      cs_layo-sel_mode = 'A'.
+
+      cs_layo-excp_fname = 'LIGHT'.
+      cs_layo-excp_led = 'X'.
+
+      cs_layo-ctab_fname = 'CEL_COL'.
+      cs_layo-info_fname = 'COLOR'.
+    WHEN 'S'.
+      cs_layo-cwidth_opt = 'A'.
+      cs_layo-zebra = 'X'.
+      cs_layo-ctab_fname = 'CEL_COL'.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0109   text
+*----------------------------------------------------------------------*
+FORM set_fcat  USING    VALUE(p_variant) TYPE c.
+  " 목적 : 필드 카탈로그 세팅
+  FIELD-SYMBOLS <fs_fcat> TYPE lvc_s_fcat.
+  CLEAR: gt_fcat, gt_fcat_stock.
+
+  CASE p_variant.
+      " 1. PO ALV인 경우
+    WHEN 'P'.
+      " 자동 필드 카탈로그 생성
+      CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+        EXPORTING
+          i_structure_name       = 'ZSPB5032'
+        CHANGING
+          ct_fieldcat            = gt_fcat
+        EXCEPTIONS
+          inconsistent_interface = 1
+          program_error          = 2
+          OTHERS                 = 3.
+
+      " ALV 필드 출력 순서 조정
+      LOOP AT gt_fcat ASSIGNING <fs_fcat>.
+        CASE <fs_fcat>-fieldname.
+          WHEN 'STATS'.
+            <fs_fcat>-no_out = 'X'.
+          WHEN 'CREAT'.
+            <fs_fcat>-no_out = 'X'.
+
+          WHEN 'PSTAT'.
+            <fs_fcat>-no_out = 'X'.
+          WHEN 'PSTAT_T'.
+            <fs_fcat>-no_out = 'X'.
+            <fs_fcat>-just = 'C'.
+
+          WHEN 'STATS_T'.
+            <fs_fcat>-col_pos = '1'.
+            <fs_fcat>-coltext = '구매오더 상태'.
+            <fs_fcat>-just = 'C'.
+          WHEN 'DEDAT'.
+            <fs_fcat>-col_pos = '1'.
+
+
+          WHEN 'VENDR'.
+            <fs_fcat>-col_pos = '2'.
+            <fs_fcat>-no_out = 'X'.
+
+          WHEN 'VENDT'.
+            <fs_fcat>-col_pos = '3'.
+            <fs_fcat>-coltext = '공급업체명'.
+
+          WHEN 'LIGHT'.
+            <fs_fcat>-col_pos = '7'.
+            <fs_fcat>-coltext = '재고충분'.
+
+          WHEN 'TOTAL'.
+            <fs_fcat>-col_pos = '9'.
+            <fs_fcat>-emphasize = 'C500'.
+
+          WHEN 'WAERS'.
+            <fs_fcat>-col_pos = '9'.
+          WHEN 'PONUM'.
+            <fs_fcat>-col_pos = '10'.
+            <fs_fcat>-hotspot   = 'X'.
+            <fs_fcat>-emphasize = 'C410'.
+          WHEN 'PODAT'.
+            <fs_fcat>-col_pos = '11'.
+
+          WHEN 'CNAME'.
+            <fs_fcat>-col_pos = '11'.
+            <fs_fcat>-coltext = '오더 담당자'.
+
+          WHEN 'DESCR'.
+            <fs_fcat>-col_pos = '12'.
+
+        ENDCASE.
+
+      ENDLOOP.
+
+      " 2. 재고 ALV인 경우
+    WHEN 'S'.
+
+      " 자동 필드 카탈로그 생성
+      CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+        EXPORTING
+          i_structure_name       = 'ZSPB5024'
+        CHANGING
+          ct_fieldcat            = gt_fcat_stock
+        EXCEPTIONS
+          inconsistent_interface = 1
+          program_error          = 2
+          OTHERS                 = 3.
+
+      " ALV 필드 출력 순서 조정
+      LOOP AT gt_fcat_stock ASSIGNING <fs_fcat>.
+        CASE <fs_fcat>-fieldname.
+          WHEN 'STATS'.
+            <fs_fcat>-no_out = 'X'.
+          WHEN 'CREAT'.
+            <fs_fcat>-no_out = 'X'.
+          WHEN 'PONUM'.
+            <fs_fcat>-no_out = 'X'.
+          WHEN 'STOCK'.
+            <fs_fcat>-no_out = 'X'.
+
+          WHEN 'LIGHT'.
+            <fs_fcat>-coltext = '재고상태'.
+          WHEN 'PRQTY'.
+            <fs_fcat>-col_pos = '5'.
+            <fs_fcat>-emphasize = 'C510'.
+
+          WHEN 'POQTY'.
+            <fs_fcat>-col_pos = '6'.
+            <fs_fcat>-emphasize = 'C500'.
+
+          WHEN 'PUNIT'.
+            <fs_fcat>-col_pos = '7'.
+
+          WHEN 'PLANT'.
+            <fs_fcat>-col_pos = '8'.
+
+          WHEN 'PNAME'.
+            <fs_fcat>-col_pos = '9'.
+
+          WHEN 'LGORT'.
+            <fs_fcat>-col_pos = '10'.
+
+          WHEN 'SNAME'.
+            <fs_fcat>-col_pos = '11'.
+
+        ENDCASE.
+
+      ENDLOOP.
+
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_light_stock.
+  " 목적 : 구매오더 승인 ALV 에 신호등 설정
+
+  " gt_stock 테이블 리스트 불러옴
+  CLEAR gt_stock.
+  SELECT ponum itnum pronr plant lgort poqty
+   FROM ztpbpoi
+   INTO CORRESPONDING FIELDS OF TABLE gt_stock
+    WHERE pflag <> 'X'.
+
+  LOOP AT gt_list INTO gs_list .
+    " 기본값 : 초록
+    gs_list-light = '3'.
+    " 해당 PO의 아이템 정보 불러옴
+    SELECT pronr plant lgort
+      FROM ztpbpoi
+      INTO CORRESPONDING FIELDS OF TABLE gt_stock
+      WHERE ponum = gs_list-ponum
+        AND pflag <> 'X'.
+
+    LOOP AT gt_stock INTO gs_stock.
+      " 아이템별 재고 조회
+      SELECT SINGLE prqty
+        FROM ztpbstock
+        INTO gs_stock-prqty
+        WHERE pronr = gs_stock-pronr
+          AND plant = gs_stock-plant
+          AND lgort = gs_stock-lgort
+          AND sttype = 'A'. " 가용재고
+
+      IF gs_stock-prqty < 31.
+        gs_list-light = '1'.
+        EXIT.
+      ENDIF.
+
+    ENDLOOP.
+
+    MODIFY gt_list FROM gs_list.
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+  CALL FUNCTION 'RE_ADD_MONTH_TO_DATE'
+    EXPORTING
+      months  = -2
+      olddate = sy-datum
+    IMPORTING
+      newdate = zspb5010-orddt_l.
+
+  zspb5010-orddt_h = sy-datum.
+
+*  PERFORM count_po_status_num.
+  CLEAR gv_subrc.
+  PERFORM get_po_list  CHANGING gv_subrc.
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  GET_VENDOR_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GS_LIST_VENDR  text
+*      <--P_GS_LIST_VENDT  text
+*----------------------------------------------------------------------*
+FORM get_vendor_name  USING    VALUE(p_vendr) TYPE zspb5013-vendr
+                      CHANGING VALUE(cv_vendt) TYPE zspb5013-vendt.
+  " 목적: 공급업체명 취득
+  CLEAR cv_vendt.
+  SELECT SINGLE vendt
+    FROM ztpbvendor
+    INTO cv_vendt
+    WHERE vendr = p_vendr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_PERNR_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GS_LIST_CREAT  text
+*      <--P_GS_LIST_CNAME  text
+*----------------------------------------------------------------------*
+FORM get_pernr_name  USING    VALUE(p_pernr) TYPE zspb5013-creat
+                     CHANGING VALUE(cv_cname) TYPE zspb5013-cname.
+  " 목적: 사원명 취득
+  CALL FUNCTION 'ZFMPB_GET_EMP_NAME'
+    EXPORTING
+      iv_creat = p_pernr
+    IMPORTING
+      ev_cname = cv_cname.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DOMAIN_VALUE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0264   text
+*      <--P_GS_LIST_STATS  text
+*      <--P_GS_LIST_STATS_T  text
+*----------------------------------------------------------------------*
+FORM get_domain_value  USING    VALUE(p_dname)
+                       CHANGING VALUE(cs_list_dv)
+                                VALUE(cs_list_tx).
+  DATA: lt_domain TYPE TABLE OF dd07v,
+        ls_domain LIKE LINE OF lt_domain.
+
+  CALL FUNCTION 'GET_DOMAIN_VALUES'
+    EXPORTING
+      domname         = p_dname
+    TABLES
+      values_tab      = lt_domain
+    EXCEPTIONS
+      no_values_found = 1
+      OTHERS          = 2.
+
+  READ TABLE lt_domain WITH KEY domvalue_l = cs_list_dv
+  INTO ls_domain.
+
+  IF sy-subrc = 0.
+    cs_list_tx = ls_domain-ddtext.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_SELECTED_ROW
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0055   text
+*      <--P_GV_SUBRC  text
+*      <--P_LV_PONUM  text
+*----------------------------------------------------------------------*
+FORM get_selected_row  USING p_check " 수정 / 삭제
+                             CHANGING VALUE(cv_subrc) TYPE sy-subrc
+                                      VALUE(cv_ponum) TYPE zspb5014-ponum.
+  " 목적: ALV 행 선택하는 기능
+  DATA: lt_row  TYPE lvc_t_row,
+        ls_row  TYPE lvc_s_row,
+        ls_data LIKE LINE OF gt_list,
+        lv_rcnt TYPE c LENGTH 2.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_row.
+  DESCRIBE TABLE lt_row LINES lv_rcnt.
+
+  CASE lv_rcnt.
+    WHEN '1'.
+      cv_subrc = 0.
+    WHEN '0'.
+      MESSAGE: i003(zmcpb) WITH p_check '행'. " & 할 &을(를) 선택하세요.
+      cv_subrc = 4.
+      RETURN.
+    WHEN OTHERS.
+      MESSAGE: i004(zmcpb) WITH p_check. "한 건만 & 가능합니다.
+      cv_subrc = 4.
+      RETURN.
+  ENDCASE.
+  LOOP AT lt_row INTO ls_row.
+    READ TABLE gt_list INDEX ls_row-index INTO ls_data.
+  ENDLOOP.
+
+  IF sy-subrc = 0.
+    CLEAR: cv_ponum.
+    cv_ponum = ls_data-ponum.
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CONFIRM_POPUP_RECEIVE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM confirm_popup_receive .
+  " 목적 : PO 승인을 확인하는 팝업 띄움
+  DATA gv_answer.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = '승인 여부 확인 팝업'
+      text_question         = '주문을 승인하시겠습니까?'
+      text_button_1         = '네'(001)
+      text_button_2         = '아니오'(002)
+      display_cancel_button = ''
+    IMPORTING
+      answer                = gv_answer
+    EXCEPTIONS
+      text_not_found        = 1
+      OTHERS                = 2.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  IF sy-subrc = 0.
+    CASE gv_answer.
+      WHEN '1'.  " Yes
+        PERFORM receive_order.
+      WHEN '2'.  " No
+      WHEN 'A'.  " Cancel
+    ENDCASE.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  RECEIVE_ORDER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM receive_order .
+  " 목적 : PO 를 승인함
+
+  UPDATE ztpbpoh SET stats = 'R'
+    WHERE ponum = gv_pokey.
+  COMMIT WORK.
+
+  IF sy-subrc = 0.
+    MESSAGE s000(zmcpb) WITH '주문이 성공적으로 승인되었습니다.'.
+    PERFORM get_po_list CHANGING gv_subrc.
+  ELSE.
+    MESSAGE s000(zmcpb) WITH '주문 승인이 실패했습니다.'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CONFIRM_POPUP_REJECT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM confirm_popup_reject .
+  " 목적 : PO 반려를 확인하는 팝업 띄움
+  DATA gv_answer.
+
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar              = '반려 여부 확인 팝업'
+      text_question         = '주문을 반려하시겠습니까?'
+      text_button_1         = '네'(001)
+      text_button_2         = '아니오'(002)
+      display_cancel_button = ''
+    IMPORTING
+      answer                = gv_answer
+    EXCEPTIONS
+      text_not_found        = 1
+      OTHERS                = 2.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  IF sy-subrc = 0.
+    CASE gv_answer.
+      WHEN '1'.  " Yes
+        PERFORM reject_order.
+      WHEN '2'.  " No
+      WHEN 'A'.  " Cancel
+    ENDCASE.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  REJECT_ORDER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM reject_order .
+  " 목적 : PO 를 반려함
+  UPDATE ztpbpoh SET stats = 'X'
+     WHERE ponum = gv_pokey.
+  COMMIT WORK.
+
+  IF sy-subrc IS INITIAL.
+    MESSAGE s000(zmcpb) WITH '주문이 성공적으로 반려되었습니다.'.
+    PERFORM get_po_list CHANGING gv_subrc.
+  ELSE.
+    MESSAGE s000(zmcpb) WITH '주문 반려가 실패했습니다.'.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  HOTSPOT_CLICK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_E_ROW_ID  text
+*      -->P_E_COLUMN_ID  text
+*----------------------------------------------------------------------*
+FORM hotspot_click USING p_row_id    TYPE lvc_s_row
+                         p_column_id TYPE lvc_s_col.
+
+  DATA: ls_row LIKE gs_list.
+  DATA: ls_color LIKE gs_list.
+  DATA: lv_ponum TYPE ztpbpoi-ponum.
+
+  CLEAR: lv_ponum, gt_stock.
+
+
+  IF p_column_id-fieldname = 'PONUM'.
+    READ TABLE gt_list INTO ls_row INDEX p_row_id-index.
+    lv_ponum = ls_row-ponum.
+
+    IF sy-subrc = 0.
+      " 목적 : 보유 재고 확인 팝업 테이블에 데이터 채우기
+      PERFORM get_stock_list USING lv_ponum.
+
+      " 색상 구조 생성
+      LOOP AT gt_list INTO ls_color.
+        CLEAR ls_color-color.
+        MODIFY gt_list FROM ls_color.
+      ENDLOOP.
+
+      ls_row-color = 'C710'.
+      MODIFY gt_list FROM ls_row INDEX p_row_id-index. " DB에 저장된 이후: MODIFY PFALG = 'X'
+
+      " TITLE을 위해 POKEY 취득
+      CLEAR gv_pokey.
+      gv_pokey = lv_ponum.
+
+      PERFORM refresh_alv USING go_alv.
+
+    ENDIF.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_STOCK_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_PONUM  text
+*----------------------------------------------------------------------*
+FORM get_stock_list  USING    p_ponum.
+  " 목적 : 가용 재고 팝업창의 ALV 리스트 취득
+
+  SELECT ponum itnum pronr plant lgort poqty
+   FROM ztpbpoi
+   INTO CORRESPONDING FIELDS OF TABLE gt_stock
+   WHERE ponum = p_ponum
+      AND pflag <> 'X'.
+
+  LOOP AT gt_stock INTO gs_stock.
+    " 목적 : 재고 수량 취득
+    SELECT SINGLE prqty
+      FROM ztpbstock
+      INTO gs_stock-prqty
+      WHERE pronr = gs_stock-pronr
+      AND plant = gs_stock-plant
+      AND lgort = gs_stock-lgort
+      AND sttype = 'A'. " 가용재고
+
+    " 없는 재고의 단위 취득
+    SELECT SINGLE punit
+      FROM ztpbproduct
+      INTO gs_stock-punit
+      WHERE pronr = gs_stock-pronr.
+
+    " 목적 : 상품명 취득
+    SELECT SINGLE pname
+      FROM ztpbproduct_t
+      INTO gs_stock-pronm
+      WHERE pronr = gs_stock-pronr.
+
+    IF gs_stock-prqty = 0.
+      gs_stock-prqty ='0'.
+    ENDIF.
+
+    IF gs_stock-prqty < 31.
+      gs_col-fname = 'PRQTY'.
+      gs_col-color-col = '6'.
+      gs_col-color-int = '1'.
+      gs_col-color-inv = '0'.
+      APPEND gs_col TO gs_stock-cel_col.
+    ENDIF.
+
+    PERFORM get_plant_name USING gs_stock-plant
+                           CHANGING gs_stock-pname.
+
+    PERFORM get_storage_name USING gs_stock-lgort
+                             CHANGING gs_stock-sname.
+
+    MODIFY gt_stock FROM gs_stock.
+    CLEAR gs_stock.
+  ENDLOOP.
+
+ENDFORM.
+FORM get_total_price USING p_ponum
+                     CHANGING cv_total.
+  " 목적 : PO HEADER DB에 저장되어있는 ITEM PO 총합계 취득
+
+  DATA: lt_item  TYPE TABLE OF zspb5014,
+        ls_item  LIKE LINE OF lt_item,
+        lv_itotl TYPE zspb5014-itotl.
+
+  CLEAR lt_item.
+  SELECT ponum price poqty
+    FROM ztpbpoi
+    INTO CORRESPONDING FIELDS OF TABLE lt_item
+    WHERE ponum = gs_list-ponum
+      AND pflag <> 'X'.
+
+  CLEAR: lv_itotl, cv_total.
+  LOOP AT lt_item INTO ls_item.
+    " PO 총합계 계산
+    cv_total = cv_total + ( ls_item-price * ls_item-poqty ).
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  VALID_PO_RECEIVE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM valid_po_receive  USING p_ponum
+                       CHANGING cv_subrc.
+  " 목적 : PO가 이미 승인된 건인지 확인
+  DATA: lv_stats TYPE ztpbpoh-stats.
+
+  SELECT SINGLE stats
+    FROM ztpbpoh
+    INTO lv_stats
+    WHERE ponum = p_ponum.
+  IF lv_stats = 'R'.
+    MESSAGE i000(zmcpb) WITH '이미 승인된 구매오더입니다.'.
+    cv_subrc = 4.
+    RETURN.
+  ELSEIF lv_stats = 'X'.
+    MESSAGE i000(zmcpb) WITH '반려된 구매오더는 승인할 수 없습니다.'.
+    cv_subrc = 4.
+    RETURN.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  VALID_PO_REJECT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_PONUM  text
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM valid_po_reject  USING    p_ponum
+                      CHANGING cv_subrc.
+  " 목적 : PO가 이미 반려된 건인지 확인
+  DATA: lv_stats TYPE ztpbpoh-stats.
+
+  SELECT SINGLE stats
+    FROM ztpbpoh
+    INTO lv_stats
+    WHERE ponum = p_ponum.
+  IF lv_stats = 'X'.
+    MESSAGE i000(zmcpb) WITH '이미 반려된 구매오더입니다.'.
+    cv_subrc = 4.
+    RETURN.
+  ELSEIF lv_stats = 'R'.
+    MESSAGE i000(zmcpb) WITH '승인된 구매오더는 반려할 수 없습니다.'.
+    cv_subrc = 4.
+    RETURN.
+  ENDIF.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_0154   text
+*----------------------------------------------------------------------*
+FORM set_sort .
+  " 목적 : ALV를 정렬
+
+  CLEAR gs_sort.
+  gs_sort-fieldname = 'DEDAT'.
+
+  gs_sort-up        = 'X'.
+  gs_sort-spos        = 1.
+  APPEND gs_sort TO gt_sort.
+
+  CLEAR gs_sort.
+  gs_sort-fieldname = 'VENDR'.
+  gs_sort-up        = 'X'.
+  gs_sort-spos        = 2.
+  APPEND gs_sort TO gt_sort.
+
+  CLEAR gs_sort.
+
+  gs_sort-fieldname = 'VENDT'.
+  gs_sort-up        = 'X'.
+  gs_sort-spos        = 3.
+  APPEND gs_sort TO gt_sort.
+
+  CLEAR gs_sort.
+
+  gs_sort-fieldname = 'TOTAL'.
+  gs_sort-down        = 'X'.
+  gs_sort-spos        = 4.
+  APPEND gs_sort TO gt_sort.
+
+  CLEAR gs_sort.
+  gs_sort-fieldname = 'PODAT'.
+  gs_sort-up        = 'X'.
+  gs_sort-spos        = 5.
+  APPEND gs_sort TO gt_sort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT_STOCK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort_stock .
+  " 목적 : STOCK ALV를 정렬
+
+  CLEAR gs_sort_stock.
+  gs_sort_stock-fieldname = 'ITNUM'.
+  gs_sort_stock-up        = 'X'.
+
+  APPEND gs_sort_stock TO gt_sort_stock.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_PLANT_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LS_ITEM_PLANT  text
+*----------------------------------------------------------------------*
+FORM get_plant_name  USING    VALUE(p_plant) TYPE ztpbplant-plant
+                      CHANGING VALUE(cv_pname) TYPE ztpbplant-pname.
+  " 목적: 플랜트명 취득
+  CLEAR cv_pname.
+  SELECT SINGLE pname
+    FROM ztpbplant
+    INTO cv_pname
+    WHERE plant = p_plant.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_STORAGE_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_storage_name  USING    p_lgort
+                       CHANGING cv_sname.
+  " 목적: 저장창고명 취득
+  CLEAR cv_sname.
+  SELECT SINGLE sname
+    FROM ztpbstorage
+    INTO cv_sname
+    WHERE lgort = p_lgort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV_0100
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0100 .
+  IF go_con IS INITIAL.
+    PERFORM create_alv USING 'CON' go_con go_alv.
+    PERFORM set_alv.
+    PERFORM set_light_stock.
+    PERFORM display_alv USING go_alv 'ZSPB5032' CHANGING gs_layo gt_list gt_fcat gt_sort.
+
+  ELSE.
+    PERFORM set_light_stock.
+    PERFORM refresh_alv USING go_alv.
+
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  REFRESH_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_ALV  text
+*----------------------------------------------------------------------*
+FORM refresh_alv  USING    po_alv TYPE REF TO cl_gui_alv_grid.
+
+  CALL METHOD po_alv->refresh_table_display
+    EXCEPTIONS
+      finished = 1
+      OTHERS   = 2.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv .
+  PERFORM set_layo USING 'P'
+                       CHANGING gs_layo.
+  PERFORM set_fcat USING 'P'.
+  PERFORM set_sort.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV_0101
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv_0101 .
+  IF go_con_stock IS INITIAL.
+    PERFORM create_alv USING 'CON_STOCK' go_con_stock go_alv_stock.
+    PERFORM set_alv_stock.
+    PERFORM display_alv USING go_alv_stock 'ZSPB5024' CHANGING gs_layo_stock gt_stock gt_fcat_stock gt_sort_stock.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_stock.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_STOCK
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_stock .
+  PERFORM set_layo USING 'S'
+                        CHANGING gs_layo_stock.
+  PERFORM set_fcat USING 'S'.
+  PERFORM set_sort_stock.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CLEAR_SELECTED_LIST_COLOR
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM clear_selected_list_color .
+  " 목적 : PONUM 선택하고 색칠 칠해진 행을 초기화
+  DATA: ls_color LIKE gs_list.
+
+  " 색상 구조 생성
+  LOOP AT gt_list INTO ls_color.
+    CLEAR ls_color-color.
+    MODIFY gt_list FROM ls_color.
+  ENDLOOP.
+
+  PERFORM refresh_alv USING go_alv.
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

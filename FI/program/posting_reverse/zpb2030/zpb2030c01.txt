@@ -1,0 +1,61 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2030C01
+*&---------------------------------------------------------------------*
+CLASS lcl_handler IMPLEMENTATION.
+
+  METHOD handle_hotspot_click.
+
+    DATA: ls_data LIKE LINE OF gt_data.
+    READ TABLE gt_data INDEX es_row_no-row_id INTO ls_data.
+
+    CASE e_column_id.
+      WHEN 'REFDO'.
+        DATA(lv_hotspot) = ls_data-refdo.
+      WHEN 'RELDO_A'.
+        lv_hotspot = ls_data-reldo_a.
+      WHEN 'RELDO_B'.
+        lv_hotspot = ls_data-reldo_b.
+      WHEN OTHERS.
+    ENDCASE.
+
+  CASE lv_hotspot(2).
+
+    WHEN 'IV'.
+
+      SET PARAMETER ID 'ZPB2022D' FIELD lv_hotspot.
+      CALL TRANSACTION 'ZPB2022D' AND SKIP FIRST SCREEN.
+*        PERFORM transaction_in_new_window USING 'ZPB2020D'.
+
+    WHEN 'PO'.
+
+      SET PARAMETER ID 'ZPB2050CD' FIELD lv_hotspot.
+      CALL TRANSACTION 'ZPB2050CD'.
+*        PERFORM transaction_in_new_window USING 'ZPB2050D'.
+
+    WHEN 'SO'.
+
+      SET PARAMETER ID 'ZPB2010D' FIELD lv_hotspot.
+      CALL TRANSACTION 'ZPB2010D'.
+*        PERFORM transaction_in_new_window USING 'ZPB2010D'.
+
+    WHEN 'GR'.
+
+      SET PARAMETER ID 'ZPB4050CD' FIELD lv_hotspot.
+      CALL TRANSACTION 'ZPB4050CD' AND SKIP FIRST SCREEN.
+*        PERFORM transaction_in_new_window USING 'ZPB4050D'.
+
+    WHEN 'GI'.
+
+      SET PARAMETER ID 'ZPB4010D' FIELD lv_hotspot.
+      CALL TRANSACTION 'ZPB4010D' AND SKIP FIRST SCREEN.
+*        PERFORM transaction_in_new_window USING 'ZPB4010D'.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMETHOD.
+
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

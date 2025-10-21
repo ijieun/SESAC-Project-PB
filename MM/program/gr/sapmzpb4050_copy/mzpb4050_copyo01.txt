@@ -1,0 +1,173 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4050O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH '[MM] 입고 및 입고 문서 생성 프로그램'.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_YELLOW'
+    IMPORTING
+      result                = icon_o
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name                  = 'ICON_LED_GREEN'
+    IMPORTING
+      result                = icon_c
+    EXCEPTIONS
+      icon_not_found        = 1
+      outputfield_too_short = 2
+      OTHERS                = 3.
+  IF sy-subrc <> 0.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_TABSTRIP_INFO_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_tabstrip_info_0100 OUTPUT.
+  CASE mytab-activetab.
+    WHEN 'TAB1'.
+      gv_dynnr = '0101'.
+    WHEN 'TAB2'.
+      gv_dynnr = '0102'.
+    WHEN OTHERS.
+      " TAB 기본값 (활성 탭 값 없으면 기본 탭 할당)
+      mytab-activetab = 'TAB1'.
+      gv_dynnr = '0101'.
+
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0101 OUTPUT.
+  PERFORM create_alv_0101.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+  SET PF-STATUS 'S200'.
+  SET TITLEBAR 'T200' WITH '입고 상세조회'.
+
+  " Call Transaction GET 해서  화면 구조체 세팅
+  IF zspb5033-grnum IS INITIAL.
+    GET PARAMETER ID 'ZPB4050CD' FIELD gv_grkey.
+
+    PERFORM set_default_0200 USING gv_grkey.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0102  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0102 OUTPUT.
+  IF go_con_gr_head IS INITIAL.
+    PERFORM create_alv USING 'CON2' go_con_gr_head go_alv_gr_head.
+  ELSE.
+    CALL METHOD go_alv_gr_head->refresh_table_display
+      EXCEPTIONS
+        finished = 1
+        OTHERS   = 2.
+  ENDIF.
+
+  PERFORM set_layo USING 'H'
+                      CHANGING gs_layo_gr_head.
+  PERFORM set_fcat USING 'H'.
+  PERFORM set_sort USING 'H'
+                   CHANGING gs_sort_gr_head gt_sort_gr_head.
+
+  PERFORM display_alv USING go_alv_gr_head 'ZSPB5027'
+        CHANGING gs_layo_gr_head gt_grdoc gt_fcat_gr_head gt_sort_gr_head.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0200 OUTPUT.
+  IF go_con_gr_item IS INITIAL.
+    PERFORM create_alv USING 'GRI_CON' go_con_gr_item go_alv_gr_item.
+  ELSE.
+    CALL METHOD go_alv_gr_item->refresh_table_display
+      EXCEPTIONS
+        finished = 1
+        OTHERS   = 2.
+  ENDIF.
+
+  PERFORM set_layo USING 'I'
+                      CHANGING gs_layo_gr_item.
+  PERFORM set_sort USING 'I'
+                     CHANGING gs_sort_gr_item gt_sort_gr_item.
+
+  PERFORM set_fcat USING 'I'.
+  PERFORM display_alv USING go_alv_gr_item 'ZSPB5034'
+                      CHANGING gs_layo_gr_item gt_grdei gt_fcat_gr_item gt_sort_gr_item.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0103  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0103 OUTPUT.
+  SET PF-STATUS 'S103'.
+  SET TITLEBAR 'T103' WITH '입고 확인 팝업'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0103  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0103 OUTPUT.
+  IF go_con_po_item IS INITIAL.
+    PERFORM create_alv USING 'PO_ITEM_CON' go_con_po_item go_alv_po_item.
+    PERFORM set_layo USING 'P'
+                         CHANGING gs_layo_po_item.
+    PERFORM set_fcat USING 'P'.
+    PERFORM set_sort USING 'P'
+                     CHANGING gs_sort_po_item gt_sort_po_item.
+
+    PERFORM display_alv USING go_alv_po_item 'ZSPB5014' CHANGING gs_layo_po_item gt_list_po_item gt_fcat_po_item gt_sort_po_item.
+
+  ELSE.
+    CALL METHOD go_alv_po_item->refresh_table_display
+      EXCEPTIONS
+        finished = 1
+        OTHERS   = 2.
+  ENDIF.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

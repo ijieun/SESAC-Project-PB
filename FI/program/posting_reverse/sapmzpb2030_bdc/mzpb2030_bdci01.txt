@@ -1,0 +1,194 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2030I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+*  PERFORM check_date.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CREATE'.
+
+      PERFORM check_refdo_status.
+      CHECK gv_subrc IS INITIAL.
+      PERFORM check_journal_exist.
+
+      SELECT SINGLE itype
+        FROM ztpbinvh
+        INTO @DATA(lv_itype)
+        WHERE invno = @zspb3005-refdo.
+
+      IF ts_ref-activetab = 'TAB_IV'.
+        READ TABLE gt_domain WITH KEY domname = 'ZDPB_ITYPE' domvalue_l = lv_itype INTO gs_domain.
+        gv_itype = gs_domain-ddtext.
+      ELSEIF ts_ref-activetab = 'TAB_GR'.
+        gv_itype = '지급'.
+      ELSEIF ts_ref-activetab = 'TAB_GI'.
+        gv_itype = '수금'.
+      ENDIF.
+
+      CHECK gv_subrc IS INITIAL.
+      CLEAR: gv_balance, zspb3005-jtype.
+      PERFORM set_alv_0100_defualt.
+
+      CALL SCREEN 110.
+      PERFORM get_journal_data.
+      CLEAR: gt_alv_0103, gt_alv_0105, gt_alv_0107, zspb3005-refdo.
+      CASE ts_ref-activetab.
+        WHEN 'TAB_IV'.
+          PERFORM get_iv_headers.
+        WHEN 'TAB_GR'.
+          PERFORM get_gr_headers.
+        WHEN 'TAB_GI'.
+          PERFORM get_gi_headers.
+        WHEN OTHERS.
+      ENDCASE.
+
+    WHEN 'SEARCH'.
+
+      CLEAR: zspb3005-refdo, zspb3008, gt_alv_0103, gt_alv_0105, gt_alv_0107.
+
+      IF zspb3005-dtype IS INITIAL.
+        MESSAGE s009(zmcpb) WITH '참조문서타입을'(c17). " & 입력해주세요.
+        gv_subrc = 10.
+        RETURN.
+      ENDIF.
+
+      CASE ts_ref-activetab.
+        WHEN 'TAB_GR'.
+          PERFORM get_gr_headers.
+
+        WHEN 'TAB_GI'.
+          PERFORM get_gi_headers.
+
+        WHEN 'TAB_IV'.
+          PERFORM get_iv_headers.
+
+        WHEN OTHERS.
+      ENDCASE.
+
+      " Tabstrip
+    WHEN 'TAB_GR'.
+      PERFORM clear_for_tabs.
+      zspb3005-dtype = 'GR'.
+      PERFORM get_gr_headers.
+      ts_ref-activetab = 'TAB_GR'.
+      ts_ref_it-activetab = 'TAB_IT_GR'.
+
+    WHEN 'TAB_GI'.
+      PERFORM clear_for_tabs.
+      zspb3005-dtype = 'GI'.
+      PERFORM get_gi_headers.
+      ts_ref-activetab = 'TAB_GI'.
+      ts_ref_it-activetab = 'TAB_IT_GI'.
+
+    WHEN 'TAB_IV'.
+      PERFORM clear_for_tabs.
+      zspb3005-dtype = 'IV'.
+      PERFORM get_iv_headers.
+      ts_ref-activetab = 'TAB_IV'.
+      ts_ref_it-activetab = 'TAB_IT_IV'.
+
+    WHEN 'BDC'.
+      PERFORM f4_file.
+      PERFORM get_excel_file.
+      PERFORM bdc.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  CLEAR gv_dynnr.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+
+  CASE ok_code.
+    WHEN 'ENTER'.
+
+      PERFORM check_item_input USING    zspb3006
+                               CHANGING gv_subrc.
+
+      CHECK gv_subrc IS INITIAL.
+
+      IF gv_subrc = 0.
+
+        MODIFY gt_alv_0100 FROM zspb3006 INDEX zspb3006-itnum.
+        LEAVE TO SCREEN 0.
+
+      ENDIF.
+
+    WHEN 'CANCEL'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0110  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0110 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+*      PERFORM date_check USING zspb3005-tdate
+*                               zspb3005-pdate.
+*      MODIFY gt_alv_0100 INDEX zspb3006-itnum FROM zspb3006.
+    WHEN 'INSERT'.
+      PERFORM journal_create.
+    WHEN 'ITEM'.
+      PERFORM item_create.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0111  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0111 INPUT.
+
+  CASE ok_code.
+    WHEN 'ENTER'.
+      CALL SCREEN 110.
+    WHEN 'CANCEL'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,77 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB3010I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE sy-ucomm.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      PERFORM get_so_list CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        MESSAGE s008(zmcpb).
+      ENDIF.
+
+    WHEN 'ENTER'.
+      PERFORM get_customer_name USING zspb1004-cusnr CHANGING zspb1004-custt.
+
+    WHEN 'BTN_R'.
+      PERFORM get_so_info CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        PERFORM check_stock_and_receive.
+      ENDIF.
+      CLEAR gv_sokey.
+
+    WHEN 'BTN_X'.
+      PERFORM get_so_info CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        PERFORM confirm_popup_reject.
+      ENDIF.
+      CLEAR gv_sokey.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0101  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0101 INPUT.
+  CASE ok_code.
+    WHEN 'ENTER'.
+
+    WHEN 'CHECK'.
+      PERFORM clear_row_col.
+      PERFORM refresh_alv USING go_alv.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CLOSE'.
+      PERFORM clear_row_col.
+      PERFORM refresh_alv USING go_alv.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

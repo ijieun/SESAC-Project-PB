@@ -1,0 +1,72 @@
+*&---------------------------------------------------------------------*
+*& Include ZPB2040TOP                                        Report ZPB2040
+*&
+*&---------------------------------------------------------------------*
+REPORT zpb2040.
+
+
+TABLES: ztpbjonlh,
+        ztpbjonli,
+        zspb4005,
+        zspb4006.
+
+" ALV 선언
+DATA: BEGIN OF gs_list.
+    INCLUDE TYPE zspb4006.
+DATA: END OF gs_list,
+gt_list LIKE TABLE OF gs_list.
+
+" 월별 반제 완료/미완료/전체 건수 집계용
+TYPES: BEGIN OF ty_month_summary,
+         year_month    TYPE char6,       " YYYYMM
+         count_total   TYPE i,           " 전체 전표 건수
+         count_done    TYPE i,           " 반제 완료 건수
+         count_pending TYPE i,           " 미완료 건수
+         rate_done     TYPE p DECIMALS 2, " 완료율
+       END OF ty_month_summary.
+
+DATA: gt_month_summary TYPE TABLE OF ty_month_summary,
+      gs_month_summary TYPE ty_month_summary.
+
+
+FIELD-SYMBOLS: <fs> TYPE ty_month_summary.
+
+" 반제 상세
+DATA: gt_clearing TYPE TABLE OF ztpbjonli,
+      gs_clearing LIKE LINE OF gt_clearing.
+
+" SELECTION-SCREEN
+*" 기본 조회 조건
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-t01.
+
+PARAMETERS pa_fyear TYPE ztpbjonlh-fyear OBLIGATORY.
+SELECT-OPTIONS so_fperi FOR ztpbjonlh-fperi.
+
+SELECTION-SCREEN END OF BLOCK b01.
+
+" 반제 전표 조회 조건
+SELECTION-SCREEN BEGIN OF BLOCK b02 WITH FRAME TITLE TEXT-t02.
+
+" 반제 전표번호
+SELECT-OPTIONS so_cljo FOR ztpbjonli-cljocum MATCHCODE OBJECT zshpb4002 .
+
+" 반제 완료율
+SELECT-OPTIONS so_cdone FOR gs_month_summary-rate_done.
+
+SELECTION-SCREEN END OF BLOCK b02.
+
+
+DATA: go_alv  TYPE REF TO cl_gui_alv_grid,
+      go_con  TYPE REF TO cl_gui_custom_container,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gs_layo TYPE lvc_s_layo,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr LIKE sy-dynnr.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

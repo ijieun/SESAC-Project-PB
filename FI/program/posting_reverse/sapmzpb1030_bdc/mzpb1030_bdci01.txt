@@ -1,0 +1,219 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1030_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE ok_code.
+    WHEN 'RAD1'.
+      PERFORM get_list.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN 'ENTER'.
+      CLEAR gv_fullname.
+      PERFORM get_empname USING    zspb3001-pernr
+                          CHANGING zspb3001-lname
+                                   zspb3001-fname
+                                   gv_fullname.
+
+    WHEN 'SEARCH'.
+      CLEAR gv_fullname.
+      PERFORM get_list.
+      PERFORM get_empname USING    zspb3001-pernr
+                          CHANGING zspb3001-lname
+                                   zspb3001-fname
+                                   gv_fullname.
+
+    WHEN 'CREATE'.
+      zspb3002-waers = 'KRW'.
+      zspb3002-pflag = ''.
+      gv_dynnr = '0200'.
+      CLEAR: zspb3001, gv_fullname.
+      PERFORM get_list.
+      PERFORM alv_refresh.
+
+      CALL SCREEN 200.
+      CLEAR: zspb3001, zspb3002, gv_fullname, gv_dynnr.
+      zspb3001-pflag = 'X'.
+      PERFORM get_list.
+      PERFORM alv_refresh.
+
+    WHEN 'UPDATE'.
+
+*      CLEAR: zspb3001, gv_fullname.
+      PERFORM set_screen_0300.
+      CLEAR: zspb3001-cusnr_s, zspb3001-cusnr_f, zspb3001-pernr, gv_fullname.
+*      zspb3001-pflag = 'X'.
+*      PERFORM get_list.
+      PERFORM alv_refresh.
+
+    WHEN 'DETAIL'.
+
+*      CLEAR: zspb3001, gv_fullname.
+      PERFORM set_screen_0400.
+
+    WHEN 'DELETE'.
+
+      DATA: lt_row_no TYPE lvc_t_roid,
+            ls_row_no LIKE LINE OF lt_row_no,
+            lv_cnt    TYPE i.
+
+      CALL METHOD go_alv->get_selected_rows
+        IMPORTING
+          et_row_no = lt_row_no.
+
+      DESCRIBE TABLE lt_row_no LINES lv_cnt.
+
+      CASE lv_cnt.
+        WHEN '0'.
+          MESSAGE i003(zmcpb) WITH '삭제'(c19) '레코드'(c15). " & 할 &을(를) 선택하세요.
+
+        WHEN OTHERS.
+
+          READ TABLE lt_row_no INDEX 1 INTO ls_row_no.
+          READ TABLE gt_data INDEX ls_row_no-row_id INTO gs_data.
+          IF gs_data-pflag = 'X'.
+            MESSAGE s000(zmcpb) WITH '이미 삭제된 레코드입니다.'(c18). " & & & &
+            RETURN.
+          ENDIF.
+
+          DATA: lt_update TYPE TABLE OF ztpbcustom,
+                ls_update LIKE LINE OF lt_update.
+
+          LOOP AT lt_row_no INTO ls_row_no.
+
+            READ TABLE gt_data INDEX ls_row_no-row_id INTO gs_data.
+            IF sy-subrc = 0.
+              gs_data-pflag = 'X'.
+              MODIFY gt_data FROM gs_data INDEX ls_row_no-row_id.
+
+              MOVE-CORRESPONDING gs_data TO ls_update.
+              ls_update-cusnr = gs_data-cusnr_s.
+              APPEND ls_update TO lt_update.
+              UPDATE ztpbcustom FROM TABLE lt_update.
+
+              CLEAR gs_data.
+            ENDIF.
+
+          ENDLOOP.
+
+          UPDATE ztpbcustom FROM TABLE lt_update.
+          PERFORM get_list.
+          PERFORM alv_refresh.
+
+      ENDCASE.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      CLEAR gv_fullname.
+      PERFORM get_empname USING    zspb3002-pernr
+                          CHANGING zspb3002-lname
+                                   zspb3002-fname
+                                   gv_fullname.
+
+    WHEN 'APPLY'.
+      PERFORM insert_new_customer.
+      PERFORM get_list.
+
+    WHEN 'BDC'.
+      PERFORM f4_file.
+      PERFORM get_excel_file.
+      PERFORM bdc.
+*      PERFORM get_list.
+*      PERFORM alv_refresh.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      CLEAR zspb3002-pname.
+      PERFORM get_empname USING    zspb3002-pernr
+                          CHANGING zspb3002-lname
+                                   zspb3002-fname
+                                   zspb3002-pname.
+
+    WHEN 'UPDATE'.
+      PERFORM update_customer_info.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0500  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0500 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

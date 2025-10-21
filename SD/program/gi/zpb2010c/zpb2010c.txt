@@ -1,0 +1,73 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPB2010
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE ZPB2010C_TOP.
+*INCLUDE zpb2010_top                             .    " global Data
+INCLUDE ZPB2010C_SCR.
+*INCLUDE zpb2010_scr                               . " Selection Screen
+INCLUDE ZPB2010C_O01.
+*INCLUDE zpb2010_o01                             .  " PBO-Modules
+INCLUDE ZPB2010C_I01.
+*INCLUDE zpb2010_i01                             .  " PAI-Modules
+INCLUDE ZPB2010C_F01.
+*INCLUDE zpb2010_f01                             .  " FORM-Routines
+
+INITIALIZATION.
+  PERFORM set_default_cond.
+
+AT SELECTION-SCREEN OUTPUT. "PBO
+
+
+AT SELECTION-SCREEN. "PAI
+
+START-OF-SELECTION.
+  IF rb_wait = 'X'.
+    PERFORM get_wait_so_list.
+  ELSEIF rb_rcv = 'X'.
+    PERFORM get_receive_so_list.
+  ELSEIF rb_close = 'X'.
+    PERFORM get_close_so_list.
+  ELSEIF rb_all = 'X'.
+    PERFORM get_all_so_list.
+  ENDIF.
+  CALL SCREEN 0100.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> [PB] 결과 화면
+
+*Text elements
+*----------------------------------------------------------
+* 001 주문 상태 조건
+* 003 주문 상태
+* 004 출고 상태
+* 005 주문 대기
+* 006 승인 완료/출고 대기
+* 007 출고 대기
+* 008 출고 완료
+* 009 전체
+* 010 승인 지연
+* 011 출고 지연
+* 012 전체
+* 020 주문 정보 조건
+
+
+*Selection texts
+*----------------------------------------------------------
+* P_CREAT         담당자 번호
+* RB_CLOSE         출고완료
+* RB_OPEN         출고대기
+* RB_RCV         승인완료
+* RB_WAIT         주문대기
+* SO_CUSNR         고객사 번호
+* SO_ORDDT         주문일자
+* SO_REQDL         요청 납기일자
+* SO_SONUM         판매오더 번호
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,279 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2010I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE sy-ucomm.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      PERFORM get_so_list CHANGING gv_subrc.
+      IF gt_list IS INITIAL.
+        MESSAGE s008(zmcpb).
+      ENDIF.
+
+    WHEN 'ENTER'.
+      PERFORM get_customer_name USING zspb1004-cusnr CHANGING zspb1004-custt.
+
+    WHEN 'DETAIL'.
+      CLEAR: zspb1003, zspb1008.
+      PERFORM get_so_info CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        PERFORM get_detail_info CHANGING gv_subrc.
+        CALL SCREEN 0200.
+      ENDIF.
+
+    WHEN 'CREATE'.
+      PERFORM set_create_condition.
+      CLEAR: gt_item.
+      CALL SCREEN 0300.
+
+    WHEN 'UPDATE'.
+      CLEAR: zspb1003, zspb1008, gt_item.
+      PERFORM get_so_info CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        CLEAR gv_subrc.
+        PERFORM check_order_stats CHANGING gv_subrc.
+        IF gv_subrc IS INITIAL.
+          PERFORM get_update_info.
+          CLEAR gv_sokey.
+          CALL SCREEN 0400.
+        ENDIF.
+      ENDIF.
+
+  ENDCASE.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      CLEAR zspb1009.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+      PERFORM get_customer_name USING zspb1009-cusnr CHANGING zspb1009-custt.
+      PERFORM get_emp_name USING zspb1009-creat CHANGING zspb1009-cname.
+
+    WHEN 'CBTN'.
+      CLEAR zspb1010.
+      zspb1010-plant = 'P001'.
+      zspb1010-waers = 'KRW'.
+      CALL SCREEN 301 STARTING AT 70 12
+                 ENDING   AT 135 22.
+
+    WHEN 'DBTN'.
+      CLEAR gv_subrc.
+      PERFORM get_item_info USING go_alv_item2 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      PERFORM delete_item_info.
+      PERFORM generate_item_number CHANGING gv_itnum. "아이템번호 123부터 재할당
+
+    WHEN 'SAVE'.
+      CLEAR gv_subrc.
+      PERFORM validate_cinfo CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      CLEAR gv_subrc.
+      PERFORM create_sales_order CHANGING gv_subrc. " 상품 채번 + db insert
+      IF gv_subrc = 0.
+        CLEAR: zspb1004, zspb1009, zspb1010, gt_item, gv_itnum.
+        PERFORM set_default_cond.
+        PERFORM get_so_list CHANGING gv_subrc.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+
+    WHEN 'UPLOAD'.
+      PERFORM upload_data_file.
+    WHEN 'BDC'.
+      PERFORM exec_bdc.
+      PERFORM get_so_list CHANGING gv_subrc.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0301  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0301 INPUT.
+  CASE ok_code.
+    WHEN 'ENTER'.
+      PERFORM set_product_info USING  zspb1010-pronr
+                               CHANGING zspb1010-punit zspb1010-price.
+      PERFORM get_product_name USING zspb1010-pronr
+                               CHANGING zspb1010-pronm.
+      PERFORM get_plant_name   USING zspb1010-plant
+                               CHANGING zspb1010-pname.
+      PERFORM get_storage_name USING zspb1010-lgort
+                               CHANGING zspb1010-sname.
+
+    WHEN 'CHECK'.
+      PERFORM add_item_info CHANGING gv_subrc.
+      IF gv_subrc = 4.
+        LEAVE TO SCREEN 301.
+      ELSE.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+
+    WHEN 'CLOSE'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+
+    WHEN 'BTN_C'. "아이템 추가
+      CLEAR zspb1010.
+      zspb1010-sonum = zspb1011-sonum.
+      zspb1010-plant = 'P001'.
+      zspb1010-waers = 'KRW'.
+
+      PERFORM set_last_itnum.
+      CALL SCREEN 301 STARTING AT 70 12
+                  ENDING   AT 135 22.
+
+    WHEN 'BTN_U'. "아이템 수정
+      CLEAR gv_subrc.
+      PERFORM get_item_info USING go_alv_item3 CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        CLEAR gv_subrc.
+        PERFORM check_item_flag CHANGING gv_subrc.
+        IF gv_subrc IS NOT INITIAL.
+          RETURN.
+        ELSE.
+          PERFORM get_update_item_info.
+          CALL SCREEN 401 STARTING AT 50 18
+                     ENDING   AT 160 27.
+        ENDIF.
+      ENDIF.
+
+    WHEN 'BTN_D'. "아이템 삭제
+      CLEAR gv_subrc.
+      PERFORM get_item_info USING go_alv_item3 CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      PERFORM delete_db_item_info.
+
+    WHEN 'UPDATE'. "판매오더 변경
+      CLEAR gv_subrc.
+      PERFORM validate_header_uinfo CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        RETURN.
+      ENDIF.
+      CLEAR gv_subrc.
+      PERFORM check_no_change CHANGING gv_subrc.
+      IF gv_subrc <> 0.
+        MESSAGE i000(zmcpb) WITH '변경된 내용이 없습니다.'.
+        RETURN.
+      ENDIF.
+      IF gt_item IS INITIAL.
+        MESSAGE i000(zmcpb) WITH '판매오더 아이템이 없습니다.'.
+        RETURN.
+      ENDIF.
+
+      CLEAR gv_subrc.
+      PERFORM update_sales_order CHANGING gv_subrc.
+      IF gv_subrc = 0.
+        CLEAR: gv_subrc, zspb1010, zspb1013, zspb1014, zspb1011, zspb1012, gt_item, gv_itnum, gv_sokey.
+        PERFORM get_so_list CHANGING gv_subrc.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+
+
+    WHEN 'DELETE'.
+      CLEAR gv_subrc.
+      PERFORM confirm_popup_delete CHANGING gv_subrc.
+      IF gv_subrc = 0.
+        CLEAR: gv_sokey, gv_subrc.
+        PERFORM get_so_list CHANGING gv_subrc.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0401  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0401 INPUT.
+  CASE ok_code.
+    WHEN 'ENTER'.
+      PERFORM set_product_info USING  zspb1014-pronr
+                              CHANGING zspb1014-punit zspb1014-price.
+      PERFORM get_product_name USING zspb1014-pronr
+                               CHANGING zspb1014-pronm.
+      PERFORM get_plant_name   USING zspb1014-plant
+                               CHANGING zspb1014-pname.
+      PERFORM get_storage_name USING zspb1014-lgort
+                               CHANGING zspb1014-sname.
+
+
+    WHEN 'UPDATEI'.
+      PERFORM update_item_info CHANGING gv_subrc.
+      IF gv_subrc = 4.
+        LEAVE TO SCREEN 401.
+      ELSE.
+        LEAVE TO SCREEN 0.
+      ENDIF.
+
+    WHEN 'CLOSE'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

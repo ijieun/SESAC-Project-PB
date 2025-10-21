@@ -1,0 +1,204 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1021I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'ENTER'.
+
+    WHEN 'SEARCH'.
+      CLEAR gv_subrc.
+      PERFORM input_search_check USING    zspb2101-llgrt
+                                 CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      CLEAR gv_subrc.
+      PERFORM input_search_check USING    zspb2101-hlgrt
+                                 CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      CLEAR: gv_subrc, gr_plant[], gr_lgort[].
+      PERFORM set_plant_range CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      CLEAR gv_subrc.
+      PERFORM set_lgort_range CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM select_lgort_list.
+      PERFORM delete_lgort.
+
+    WHEN 'INSERT'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '스토리지 등록할'(t11) '플랜트'(t12) '등록'(t13)
+                             CHANGING zspb2103
+                                      gv_subrc.
+
+      IF gv_subrc IS INITIAL.
+        CLEAR: zspb2103-lgort, zspb2103-sname.
+        PERFORM select_plant_lgort USING zspb2103-plant.
+        CALL SCREEN 0200.
+        CLEAR: zspb2103.
+
+      ENDIF.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '수정할'(t14) '라인'(t15) '수정'(t16)
+                             CHANGING zspb2104
+                                      gv_subrc.
+
+      MOVE-CORRESPONDING zspb2104 TO gs_before.
+
+      IF gv_subrc IS INITIAL.
+        PERFORM select_plant_lgort USING zspb2104-plant.
+        CALL SCREEN 0300.
+        CLEAR: zspb2104.
+
+      ENDIF.
+
+    WHEN 'DETAIL'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '조회할'(t17) '라인'(t15) '조회'(t18)
+                             CHANGING zspb2105
+                                      gv_subrc.
+
+      IF gv_subrc IS INITIAL.
+        CALL SCREEN 0400.
+
+      ENDIF.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'INSERT'.
+      CLEAR gv_subrc.
+      PERFORM input_check USING    zspb2103-lgort
+                                   zspb2103-sname
+                          CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM insert_lgort.
+
+    WHEN 'BDC'.
+      PERFORM get_excel_data.
+      PERFORM bdc.
+      CLEAR gv_file.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM input_check USING    zspb2104-lgort
+                                   zspb2104-sname
+                          CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM update_lgort.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_DATA_FILE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_data_file INPUT.
+  CALL FUNCTION 'F4_FILENAME'
+    IMPORTING
+      file_name = gv_file.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

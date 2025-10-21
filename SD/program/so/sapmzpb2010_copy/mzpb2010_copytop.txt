@@ -1,0 +1,126 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2010TOP                                       Module Pool      SAPMZPB2010
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2010.
+
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      icon_w   TYPE icons-text,
+      icon_x   TYPE icons-text,
+      icon_r   TYPE icons-text.
+
+" Types
+TYPES: ty_orddt_range TYPE RANGE OF ztpbsoh-orddt.
+TYPES: ty_sonum_range TYPE RANGE OF ztpbsoh-sonum.
+
+" header 조회
+DATA: gt_data TYPE TABLE OF zspb1006,
+      gs_data LIKE LINE OF gt_data.
+DATA: gt_list LIKE gt_data, "복사본
+      gs_list LIKE LINE OF gt_list.
+
+" item 조회
+*DATA: gt_detail TYPE TABLE OF zspb1007,
+*      gs_detail LIKE LINE OF gt_detail.
+DATA: BEGIN OF gs_detail,
+        row_col(4).
+    INCLUDE TYPE zspb1007.
+DATA: END OF gs_detail,
+gt_detail LIKE TABLE OF gs_detail.
+
+DATA: gt_item TYPE TABLE OF zspb1010,
+      gs_item LIKE LINE OF gt_item.
+DATA gt_iorigin LIKE gt_item.
+
+DATA: gv_sokey TYPE ztpbsoh-sonum.
+DATA: gv_itkey TYPE ztpbsoi-itnum.
+DATA: gv_itnum TYPE ztpbsoi-itnum.
+
+" Condition
+TABLES zspb1004."판매오더 헤더 검색
+TABLES zspb1009. "판매오더 헤더 생성
+TABLES zspb1010. "판매오더 아이템 생성
+
+TABLES zspb1011. " 판매오더 헤더 기본 정보
+TABLES zspb1012. " 판매오더 헤더 수정
+TABLES zspb1013. " 판매오더 아이템 기본 정보
+TABLES zspb1014. " 판매오더 아이템 수정
+
+
+" Info
+TABLES zspb1005. "안내
+TABLES zspb1006. "헤더 상세조회
+TABLES zspb1021. " 고객사 조회
+TABLES zspb1003. "재고 조회
+TABLES zspb1008. "판매오더 아이템 상품 조회
+
+
+* Domain Fixed Value
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+" 파일 선택 필드
+DATA: gv_file  TYPE rlgrap-filename.
+" Excel
+DATA: gs_excel TYPE zspb1019,
+      gt_excel LIKE TABLE OF gs_excel.
+"BDC
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+
+
+" ALV Components
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+" ALV Components - Item (상세조회)
+DATA: go_con_item  TYPE REF TO cl_gui_custom_container,
+      go_alv_item  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_item TYPE lvc_s_layo,
+      gt_fcat_item TYPE lvc_t_fcat,
+      gs_fcat_item LIKE LINE OF gt_fcat_item,
+      gt_sort_item TYPE lvc_t_sort,
+      gs_sort_item LIKE LINE OF gt_sort_item.
+
+" ALV Components - Item2 (생성)
+DATA: go_con_item2  TYPE REF TO cl_gui_custom_container,
+      go_alv_item2  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_item2 TYPE lvc_s_layo,
+      gt_fcat_item2 TYPE lvc_t_fcat,
+      gs_fcat_item2 LIKE LINE OF gt_fcat_item,
+      gt_sort_item2 TYPE lvc_t_sort,
+      gs_sort_item2 LIKE LINE OF gt_sort_item2.
+
+" ALV Components - Item3 (변경)
+DATA: go_con_item3  TYPE REF TO cl_gui_custom_container,
+      go_alv_item3  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_item3 TYPE lvc_s_layo,
+      gt_fcat_item3 TYPE lvc_t_fcat,
+      gs_fcat_item3 LIKE LINE OF gt_fcat_item,
+      gt_sort_item3 TYPE lvc_t_sort,
+      gs_sort_item3 LIKE LINE OF gt_sort_item3.
+
+
+" Handler
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS:
+      on_toolbar FOR EVENT toolbar OF cl_gui_alv_grid
+        IMPORTING e_object e_interactive,
+      on_user_command FOR EVENT user_command OF cl_gui_alv_grid
+        IMPORTING e_ucomm,
+      handler_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING e_row_id  e_column_id es_row_no.
+ENDCLASS.
+DATA go_handler TYPE REF TO lcl_event_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,28 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4050C01
+*&---------------------------------------------------------------------*
+
+CLASS lcl_event_handler IMPLEMENTATION.
+  " 더블 클릭해서 입고
+  METHOD on_double_click.
+    PERFORM double_click_gr USING e_column es_row_no.
+  ENDMETHOD.
+
+  METHOD handle_hotspot_click_po.
+    " PONUM HOTSPOT 클릭해서 PO 상세조회
+    PERFORM hotspot_click_po USING e_row_id e_column_id es_row_no.
+  ENDMETHOD.
+
+  METHOD handle_hotspot_click_gr.
+    " GRNUM HOTSPOT 클릭해서 GR 상세조회
+    PERFORM hotspot_click_gr USING e_row_id e_column_id es_row_no.
+  ENDMETHOD.
+
+  METHOD handle_hotspot_click_pronr.
+    " PRONR HOTSPOT 클릭해서 상품 상세조회
+    PERFORM hotspot_click_pronr USING e_row_id e_column_id.
+  ENDMETHOD.
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

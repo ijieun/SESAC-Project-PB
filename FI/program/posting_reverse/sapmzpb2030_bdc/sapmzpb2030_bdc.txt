@@ -1,0 +1,80 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       SAPMZPB2030
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+
+INCLUDE MZPB2030_BDCTOP.
+*INCLUDE mzpb2030top.
+*INCLUDE mzpb2030_cocopypytop.
+*INCLUDE mzpb2030top                             .  " Global Data
+INCLUDE MZPB2030_BDCO01.
+*INCLUDE mzpb2030o01.
+*INCLUDE mzpb2030_cocopypyo01.
+*INCLUDE mzpb2030o01                             .  " PBO-Modules
+INCLUDE MZPB2030_BDCI01.
+*INCLUDE mzpb2030i01.
+*INCLUDE mzpb2030_cocopypyi01.
+*INCLUDE mzpb2030i01                             .  " PAI-Modules
+INCLUDE MZPB2030_BDCF01.
+*INCLUDE mzpb2030f01.
+*INCLUDE mzpb2030_cocopypyf01.
+*INCLUDE mzpb2030f01                             .  " FORM-Routines
+
+LOAD-OF-PROGRAM.
+  gv_dynnr = 100.
+  PERFORM set_default.
+
+  PERFORM get_bp_data.
+  PERFORM get_journal_data.
+  PERFORM get_iv_headers.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+* T101 --> &
+* T110 --> &
+
+*Text elements
+*----------------------------------------------------------
+* C01 [PB] 전표 참조문서 조회
+* C02 [PB] GR문서 조회 팝업
+* C03 [PB] GI문서 조회 팝업
+* C04 [PB] IV문서 조회 팝업
+* C05 참조문서를 선택하세요.
+* C06 [PB] 전표 아이템 입력 팝업
+* C07 부가설명을 제외한 아이템 정보를 모두
+* C08 헤더 정보를 모두
+* C09 대변과 차변의 금액이 일치하지 않습니다.
+* C10 전표
+* C11 전표번호
+* C12 참조 문서의 타입과 번호가 일치하지 않습니다.
+* C13 계정번호와 이름이 일치하는지 확인하세요.
+* C14 입력
+* C15 차변/대변
+* C16 차변/대변을 하나씩
+* C17 참조문서타입을
+* C18 전표를 생성할 수 없는 문서입니다.
+* C19 전표 생성
+* C20 전표가
+* C21 문서
+* C22 해당하는
+* C23 전표가 생성된 문서입니다. 진행하시겠습니까?
+* C24 올바른 날짜 정보를 입력해주세요.
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*006   & 이미 존재하는 & 입니다.
+*008   & 정보가 없습니다.
+*009   & 입력해주세요.
+*011   & &이(가) 저장되었습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

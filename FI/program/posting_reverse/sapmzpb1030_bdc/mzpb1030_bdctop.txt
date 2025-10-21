@@ -1,0 +1,62 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1030_TOP                                      Module Pool      SAPMZPB1030
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1030.
+
+" test
+DATA: gv_external_call TYPE char1,
+      gv_num           TYPE ebeln.
+
+
+" BDC
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gt_excel TYPE zspb3001_t,
+      gs_excel LIKE LINE OF gt_excel.
+
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr LIKE sy-dynnr.
+
+" Screen 100 Condition
+DATA: gv_fullname TYPE ddtext.
+
+" Screen 100 ALV List
+TABLES: zspb3001.
+DATA: gs_data TYPE zspb3001,
+      gt_data LIKE TABLE OF gs_data.
+
+DATA: gs_emp LIKE ztpbemp,
+      gt_emp LIKE TABLE OF gs_emp.
+
+" Screen 200, 300, 400
+TABLES zspb3002.
+
+" Screen 300 Previous Info
+DATA: BEGIN OF gs_pinfo,
+        pernr TYPE zspb3002-pernr,
+        lname TYPE zspb3002-lname,
+        fname TYPE zspb3002-fname,
+        pname TYPE zspb3002-pname,
+        custt TYPE zspb3002-custt,
+        phone TYPE zspb3002-phone,
+        adres TYPE zspb3002-adres,
+        pflag TYPE zspb3002-pflag,
+      END OF gs_pinfo,
+      gt_pinfo LIKE TABLE OF gs_pinfo.
+
+" ALV Components ( Screen 0100 )
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

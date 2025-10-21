@@ -1,0 +1,1466 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2040F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_alv .
+
+  CREATE OBJECT go_con
+    EXPORTING
+      container_name = 'CON'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Custom Container Error'.
+  ENDIF.
+
+
+  CREATE OBJECT go_alv
+    EXPORTING
+      i_parent = go_con.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Alv Error'.
+  ENDIF.
+
+  CREATE OBJECT go_handler.
+  SET HANDLER go_handler->handle_hotspot_click FOR go_alv.
+*  SET HANDLER go_handler->on_double_click FOR go_alv.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+
+  CALL METHOD go_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4005'
+*     i_default        = 'X'
+      is_layout        = gs_layo
+    CHANGING
+      it_outtab        = gt_list
+      it_fieldcatalog  = gt_fcat
+      it_sort          = gt_sort.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  "Screen 100 체크박스 기본값
+  gv_check1 = 'X'.
+  gv_check2 = 'X'.
+  gv_check3 = 'X'.
+  gv_check4 = 'X'.
+  gv_check5 = 'X'.
+  gv_check6 = 'X'.
+  gv_check7 = 'X'.
+  gv_check8 = 'X'.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_DEFAULT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_default .
+
+  "Screen 100 회계연도 기본값
+  zspb4005-fyear = sy-datum(4).
+  zspb4024-waers = 'KRW'.
+
+  "layout
+  PERFORM set_layout.
+
+  "Field Catalog
+  PERFORM set_fcat.
+
+  "sort
+  PERFORM set_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYOUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layout .
+
+  CLEAR gs_layo.
+  gs_layo-excp_fname = 'LIGHT'.
+  gs_layo-excp_led = 'X'.
+  gs_layo-zebra = 'X'.
+  gs_layo-sel_mode = 'A'.
+  gs_layo-cwidth_opt = 'A'.
+  gs_layo-info_fname = 'COLOR'.
+
+  CLEAR gs_jhlayo.
+  gs_jhlayo-zebra = 'X'.
+  gs_jhlayo-cwidth_opt = 'A'.
+  gs_jhlayo-info_fname = 'COLOR'.
+
+  CLEAR gs_jilayo.
+  gs_jilayo-zebra = 'X'.
+  gs_jilayo-cwidth_opt = 'A'.
+  gs_jilayo-info_fname = 'COLOR'.
+  gs_jilayo-ctab_fname = 'CELLCOLOR'.
+
+  CLEAR gs_llayo.
+  gs_llayo-excp_fname = 'LIGHT'.
+  gs_llayo-excp_led = 'X'.
+  gs_layo-zebra = 'X'.
+  gs_llayo-sel_mode = 'A'.
+  gs_llayo-cwidth_opt = 'A'.
+
+  CLEAR gs_cllayo.
+  gs_cllayo-excp_fname = 'LIGHT'.
+  gs_cllayo-excp_led = 'X'.
+  gs_cllayo-zebra = 'X'.
+  gs_cllayo-sel_mode = 'A'.
+  gs_cllayo-cwidth_opt = 'A'.
+
+  CLEAR gs_poplayo.
+  gs_poplayo-excp_fname = 'LIGHT'.
+  gs_poplayo-excp_led = 'X'.
+  gs_poplayo-zebra = 'X'.
+  gs_poplayo-sel_mode = 'A'.
+  gs_poplayo-cwidth_opt = 'A'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_ALV_LIST
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_alv_list .
+
+  " 회계연도 & 회계기간 & 전표 전기일 조건 분류
+  PERFORM check_date_condition.
+  CHECK gv_subrc IS INITIAL. " GV_SUBRC = 0이면 밑에 조건들이 실행되도록
+
+  "check box 조건별 조회
+  DATA: lr_types TYPE RANGE OF ztpbjonlh-jtype, "internal table
+        lwa_type LIKE LINE OF lr_types. "work area
+
+  CLEAR lr_types[].
+
+  " 체크박시 미선택 시 ALV가 조회되지 않도록
+  IF gv_check1 IS INITIAL AND gv_check2 IS INITIAL AND gv_check3 IS INITIAL AND gv_check4 IS INITIAL AND
+    gv_check5 IS INITIAL AND gv_check6 IS INITIAL AND gv_check7 IS INITIAL AND gv_check8 IS INITIAL.
+    MESSAGE i020(zmcpb). "최소 한 개 이상의 체크박스를 선택해주세요.
+    RETURN.
+  ENDIF.
+
+  " 체크박스별 전표유형을 RANGES 테이블에 추가
+  IF gv_check1 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'. "해당 범위 포함 E면 제외
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'SA'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check2 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'DZ'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check3 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'KZ'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check4 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'SK'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check5 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'DR'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check6 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'WE'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+  IF gv_check8 = 'X'.
+    CLEAR lwa_type.
+    lwa_type-sign = 'I'.
+    lwa_type-option = 'EQ'.
+    lwa_type-low = 'RE'.
+    APPEND lwa_type TO lr_types.
+  ENDIF.
+
+
+*  " 전체 선택 시 RANGES 빈 테이블로 필터 해제
+  IF gv_check1 = 'X' AND gv_check2 = 'X' AND gv_check3 = 'X' AND gv_check4 = 'X' AND
+     gv_check5 = 'X' AND gv_check6 = 'X' AND gv_check8 = 'X'. " AND gv_check7 = 'X'.
+    CLEAR lr_types[].  " RANGES를 비워서 전체 조회
+  ENDIF.
+
+
+
+  " 선택한 전표유형에 해당하는 전표가 존재하지 않을 시 메시지 처리
+  DATA: lv_missing_types TYPE string.
+
+  LOOP AT lr_types INTO DATA(lr_line).
+    SELECT COUNT(*) FROM ztpbjonlh
+      WHERE jtype = @lr_line-low
+      INTO @DATA(lv_count).
+
+    IF lv_count = 0.
+      CONCATENATE lv_missing_types lr_line-low INTO lv_missing_types SEPARATED BY space.
+    ENDIF.
+  ENDLOOP.
+
+  IF lv_missing_types IS NOT INITIAL.
+    MESSAGE i000(zmcpb) WITH '선택하신 전표유형' lv_missing_types'에 해당하는'
+                              '전표는 존재하지 않아 조회 리스트에서 제외됩니다.'.
+  ENDIF.
+
+
+
+  DATA: gr_pdate TYPE RANGE OF sy-datum,
+        wa_pdate LIKE LINE OF gr_pdate.
+  DATA: lv_mostart TYPE sy-datum,
+        lv_molast  TYPE sy-datum.
+
+  CLEAR gr_pdate.
+  IF zspb4005-pdate IS NOT INITIAL.
+    CLEAR wa_pdate.
+    wa_pdate-sign = 'I'.
+    wa_pdate-option = 'EQ'.
+    wa_pdate-low = zspb4005-pdate.
+    APPEND wa_pdate TO gr_pdate.
+
+  ELSEIF zspb4005-fperi IS NOT INITIAL
+    AND zspb4005-pdate IS INITIAL.
+
+    lv_mostart = zspb4005-fyear && zspb4005-fperi && '01'.
+
+    CALL FUNCTION 'RP_LAST_DAY_OF_MONTHS'
+      EXPORTING
+        day_in            = lv_mostart
+      IMPORTING
+        last_day_of_month = lv_molast.
+
+    CLEAR wa_pdate.
+    wa_pdate-sign = 'I'.
+    wa_pdate-option = 'BT'.
+    wa_pdate-low = lv_mostart.
+    wa_pdate-high = lv_molast.
+    APPEND wa_pdate TO gr_pdate.
+
+  ENDIF.
+
+
+  " 전표번호 범위 체크 (조건)
+  IF rv_jocum-low IS NOT INITIAL AND rv_jocum-high IS NOT INITIAL.
+    IF rv_jocum-low > rv_jocum-high.
+      MESSAGE i000(zmcpb) WITH '입력하신 전표 범위가 올바르지 않습니다.'
+                           '시작 번호가 종료 번호보다 작도록 조정해 주세요.'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  " 전표유형+전표번호 양쪽 범위 다 입력
+  IF rv_jocum-low IS NOT INITIAL AND rv_jocum-high IS NOT INITIAL AND lr_types IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo, a~ojocum, a~rjocum, b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum BETWEEN @rv_jocum-low AND @rv_jocum-high
+        AND jtype IN @lr_types AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+    " 전표번호 양쪽 범위 다 입력
+  ELSEIF rv_jocum-low IS NOT INITIAL AND rv_jocum-high IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo,  a~ojocum, a~rjocum,b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum BETWEEN @rv_jocum-low AND @rv_jocum-high AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+
+    " 전표번호 low값 + 전표유형 (( 이 조건에 해당하는 전표가 없으면 메시지 출력 ))
+  ELSEIF rv_jocum-low IS NOT INITIAL AND lr_types IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo,  a~ojocum, a~rjocum,b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum >= @rv_jocum-low
+        AND jtype IN @lr_types AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+    " 전표번호 low값만 입력된 경우 (low 이상만 조회)
+  ELSEIF rv_jocum-low IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo, a~ojocum, a~rjocum, b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum = @rv_jocum-low AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+    " 전표번호 high값 + 전표유형 (( 이 조건에 해당하는 전표가 없으면 메시지 출력 ))
+  ELSEIF rv_jocum-high IS NOT INITIAL AND lr_types IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo, a~ojocum, a~rjocum, b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum <= @rv_jocum-high
+        AND jtype IN @lr_types AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+
+    " 전표번호 high값만 입력된 경우 (high 이하만 조회)
+  ELSEIF rv_jocum-high IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo,  a~ojocum, a~rjocum,b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE a~jocum <= @rv_jocum-high AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+
+    " 전표유형에 해당하는 전표만 조회
+  ELSEIF lr_types IS NOT INITIAL.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo, a~ojocum, a~rjocum, b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list
+      WHERE jtype IN @lr_types AND pdate IN @gr_pdate.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+    " 필수값인 회계연도 제외 전체 조건 미입력: 전체 전표 조회
+  ELSE.
+    CLEAR gt_list.
+    SELECT a~jocum, a~fyear, a~fperi, a~jtype, a~waers, a~tdate, a~pdate, a~refdo,  a~ojocum, a~rjocum,b~price
+      FROM ztpbjonlh AS a LEFT OUTER JOIN ztpbjonli AS b
+        ON a~jocum = b~jocum
+      WHERE fyear EQ @zspb4005-fyear AND
+            jtype IN @lr_types AND pdate IN @gr_pdate
+      INTO CORRESPONDING FIELDS OF TABLE @gt_list.
+    LOOP AT gt_list INTO gs_list.
+      PERFORM get_jtype_name USING gs_list-jtype CHANGING gs_list-jtype_t.
+      MODIFY gt_list FROM gs_list.
+    ENDLOOP.
+
+  ENDIF.
+
+*  DATA : lt_collect LIKE gt_list.
+*  LOOP AT gt_list INTO gs_list.
+*    gs_list-price = gs_list-price / 2.
+*    COLLECT gs_list INTO lt_collect.
+*  ENDLOOP.
+*  gt_list = lt_collect.
+
+  IF gt_list IS INITIAL.
+    MESSAGE i000(zmcpb) WITH '입력하신 조건에 일치하는 전표가 존재하지 않습니다.'.
+    RETURN.
+  ENDIF.
+
+  "금액별 전표 Header 조회
+  IF zspb4024-price IS NOT INITIAL.
+    DELETE gt_list WHERE price NE zspb4024-price.
+  ENDIF.
+
+  SORT gt_list BY jocum .
+  DELETE ADJACENT DUPLICATES FROM gt_list COMPARING jocum.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_ITEM_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_item_alv .
+
+  CREATE OBJECT go_item
+    EXPORTING
+      container_name = 'ITEM'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create 2th Custom Container Error'.
+  ENDIF.
+
+
+  CREATE OBJECT go_item_alv
+    EXPORTING
+      i_parent = go_item.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create 2th Alv Error'.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ITEM_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_item_alv .
+
+  CALL METHOD go_item_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4006'
+*     i_default        = 'X'
+      is_layout        = gs_llayo
+    CHANGING
+      it_outtab        = gt_jitem_list
+      it_fieldcatalog  = gt_ifcat
+*     it_sort          =
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_JHEADER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_jheader USING iv_jocum TYPE ztpbjonlh-jocum
+                 CHANGING cs_jheader TYPE ztpbjonlh.
+
+
+  SELECT SINGLE
+    jocum
+    fyear
+    fperi
+    jtype
+    waers
+    tdate
+    pdate
+    refdo
+    FROM ztpbjonlh
+    INTO CORRESPONDING FIELDS OF cs_jheader
+    WHERE jocum = iv_jocum.
+
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_RECORD
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM select_record .
+
+  DATA: lt_rows TYPE lvc_t_row,
+        ls_rows LIKE LINE OF lt_rows,
+        lv_cnt  TYPE sy-tabix.
+  CLEAR: gv_subrc, gs_list.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_index_rows = lt_rows
+*     et_row_no     =
+    .
+  DESCRIBE TABLE lt_rows LINES lv_cnt.
+  CASE lv_cnt.
+    WHEN '0'.
+      MESSAGE i000(zmcpb) WITH '상세조회 할 하나의 전표 레코드를 선택 해주세요.'.
+      "False
+      sy-subrc = 4.
+      RETURN.
+
+    WHEN '1'.
+
+      READ TABLE lt_rows INDEX 1 INTO ls_rows.
+      CLEAR gs_list.
+      READ TABLE gt_list INDEX ls_rows-index INTO gs_list.
+
+      IF sy-subrc <> 0.
+        RETURN.
+      ENDIF.
+
+    WHEN OTHERS.
+      MESSAGE i000(zmcpb) WITH '상세조회할 하나의 전표 레코드만 선택 해주세요'.
+      "False
+      sy-subrc = 4.
+      RETURN.
+  ENDCASE.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_JITEM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_jitem USING iv_jocum1 TYPE ztpbjonlh-jocum
+                   iv_jocum2 TYPE ztpbjonlh-jocum.
+
+*  PERFORM select_record.
+  IF sy-subrc <> 0.
+    RETURN.
+  ENDIF.
+
+  "Screen 200의 전표 item alv list
+  CLEAR gt_jitem_list.
+  SELECT
+  a~jocum
+  a~itnum
+  a~glacc
+  a~dbcrf
+  a~price
+  a~pokey
+  a~waers
+  a~descr
+  a~cflag
+  a~cljocum
+  a~cldate
+  b~gname
+    FROM ztpbjonli AS a INNER JOIN ztpbgla AS b
+    ON a~glacc = b~glacc
+    INTO CORRESPONDING FIELDS OF TABLE gt_jitem_list
+   WHERE a~jocum IN ( iv_jocum1, iv_jocum2 ).
+
+
+  " 각 라인별로 cflag 값에 따라 아이콘 세팅
+  LOOP AT gt_jitem_list INTO gs_jitem_list.
+    IF gs_jitem_list-cflag = 'X'.
+      gs_jitem_list-cflagi = '@01@'.   " 체크 아이콘
+    ELSE.
+      gs_jitem_list-cflagi = '@02@'.  " X 아이콘
+    ENDIF.
+    MODIFY gt_jitem_list FROM gs_jitem_list INDEX sy-tabix TRANSPORTING cflagi.
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_DATE_CONDITION
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_date_condition .
+
+  DATA: lv_pdate_year  TYPE string,
+        lv_fyear_str   TYPE string,
+        lv_pdate_month TYPE string,
+        lv_fperi_str   TYPE string.
+
+  " pdate 연도 및 월, fyear, fperi 문자열 추출
+  lv_pdate_year  = zspb4005-pdate+0(4).
+  lv_fyear_str   = zspb4005-fyear.
+  lv_pdate_month = zspb4005-pdate+4(2).
+  lv_fperi_str   = zspb4005-fperi.
+
+  CLEAR gv_subrc.
+  " 1. 회계연도와 전기일의 연도 일치 여부 체크 및 조회
+  IF zspb4005-pdate IS NOT INITIAL AND zspb4005-fyear IS NOT INITIAL.
+    IF lv_pdate_year <> lv_fyear_str.
+      MESSAGE i000(zmcpb) WITH '회계연도와 전기일의 연도가 일치하지 않습니다.'.
+      gv_subrc = 4.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  " 2. 회계기간과 전기일 달 일치 여부 체크 및 조회
+  IF zspb4005-fperi IS NOT INITIAL AND zspb4005-pdate IS NOT INITIAL.
+    IF CONV i( lv_pdate_month ) <> CONV i( lv_fperi_str ).
+      MESSAGE i000(zmcpb) WITH '회계기간과 전기일의 달이 일치하지 않습니다.'.
+      gv_subrc = 4.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_CLITEM_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_clitem_alv .
+
+  CREATE OBJECT go_clitem
+    EXPORTING
+      container_name = 'CLITEM'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create 3th Custom Container Error'.
+  ENDIF.
+
+
+  CREATE OBJECT go_clitem_alv
+    EXPORTING
+      i_parent = go_clitem.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create 3th Alv Error'.
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_CLITEM_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_clitem_alv .
+
+
+  CALL METHOD go_clitem_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4010'
+*     i_default        = 'X'
+      is_layout        = gs_cllayo
+    CHANGING
+      it_outtab        = gt_clitem_list
+      it_fieldcatalog  = gt_clfcat
+*     it_sort          =
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_HEADER&ITEM_DETAIL_INFO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_header_item_detail_info .
+
+
+  " get 전표 header condition
+  DATA: lt_selected_jocum TYPE TABLE OF ztpbjonlh-jocum,
+        lv_jocum1         TYPE ztpbjonlh-jocum,
+        lv_jocum2         TYPE ztpbjonlh-jocum,
+        zspb4007_local    TYPE ztpbjonlh,
+        zspb4008_local    TYPE ztpbjonlh,
+        lt_selected_rows  TYPE lvc_t_roid,
+        ls_selected_row   TYPE lvc_s_roid.
+
+  CLEAR: lt_selected_jocum,
+         lv_jocum1,
+         lv_jocum2,
+         zspb4007_local,
+         zspb4008_local,
+         lt_selected_rows,
+         ls_selected_row.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_row_no = lt_selected_rows.
+
+  CLEAR lt_selected_jocum.
+
+  LOOP AT lt_selected_rows INTO ls_selected_row.
+    READ TABLE gt_list INDEX ls_selected_row-row_id INTO DATA(ls_data).
+    IF sy-subrc = 0.
+      APPEND ls_data-jocum TO lt_selected_jocum.
+    ENDIF.
+  ENDLOOP.
+
+  READ TABLE lt_selected_jocum INDEX 1 INTO lv_jocum1.
+  READ TABLE lt_selected_jocum INDEX 2 INTO lv_jocum2.
+
+  IF lv_jocum1 IS INITIAL OR lv_jocum2 IS INITIAL.
+    MESSAGE '두 개의 전표 레코드를 선택하세요' TYPE 'E'.
+    EXIT.
+  ENDIF.
+
+  PERFORM get_jheader USING lv_jocum1 CHANGING zspb4007_local.
+  IF sy-subrc <> 0.
+    MESSAGE '첫 번째 전표 미선택으로 조회 실패하였습니다.' TYPE 'I'.
+    EXIT.
+  ENDIF.
+
+  PERFORM get_jheader USING lv_jocum2 CHANGING zspb4008_local.
+  IF sy-subrc <> 0.
+    MESSAGE '두 번째 전표 미선택으로 조회 실패하였습니다.' TYPE 'I'.
+    EXIT.
+  ENDIF.
+
+  MOVE-CORRESPONDING zspb4007_local TO zspb4007.
+  MOVE-CORRESPONDING zspb4008_local TO zspb4008.
+
+  "get 전표유형명
+  PERFORM get_jtype_t USING zspb4007-jtype
+                          CHANGING zspb4007-jtype_t.
+  PERFORM get_jtype_t USING zspb4008-jtype
+                        CHANGING zspb4008-jtype_t.
+
+
+  " get 전표 item alv
+  PERFORM get_jitem USING lv_jocum1 lv_jocum2.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GO_POPUP_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_go_popup_alv .
+
+  CREATE OBJECT go_popup
+    EXPORTING
+      container_name = 'POPUP'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create POPUP Custom Container Error'.
+  ENDIF.
+
+  CREATE OBJECT go_popup_alv
+    EXPORTING
+      i_parent = go_popup.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create POPUP Alv Error'.
+  ENDIF.
+
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GS_POPLIST-LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_gs_poplist-light .
+
+
+  LOOP AT gt_poplist INTO gs_poplist.
+    " 미결 상태인 경우
+    IF gs_poplist-cflag = ''.
+      gs_poplist-light = '1'. " 빨간불(미결)
+*      gs_poplist-cflag = '@02@'. "X표시
+
+      " 반제 상태인 경우
+    ELSEIF gs_poplist-cflag = 'X'.
+      gs_poplist-light = '3'. " 초록불(반제)
+*      gs_poplist-cflag = '@01@'. "체크표시
+    ENDIF.
+    MODIFY gt_poplist FROM gs_poplist.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_GO_POPUP_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_go_popup_alv .
+
+
+  CALL METHOD go_popup_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4006'
+*     i_default        = 'X'
+      is_layout        = gs_poplayo
+    CHANGING
+      it_outtab        = gt_poplist
+      it_fieldcatalog  = gt_popfcat.
+*      it_sort          = gt_popsort.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NUMBERRANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_numberrange .
+
+  DATA lv_cljocum  TYPE char10.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr = '01'
+      object      = 'ZNRPB4021'
+    IMPORTING
+      number      = lv_cljocum.
+
+  IF sy-subrc = 0.
+    CONCATENATE 'CL' sy-datum(4) lv_cljocum INTO gv_cljocum.
+  ELSE.
+    MESSAGE i021(zmcpb). "새로운 번호를 생성할 수 없습니다.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_JTYPE_T
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_jtype_t USING VALUE(ps_jtype)
+                 CHANGING ps_jtype_t TYPE zspb4007-jtype_t.
+
+  DATA: ls_domain  LIKE LINE OF gt_domain.
+
+  IF gt_domain IS INITIAL.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_JTYPE'
+      TABLES
+        values_tab      = gt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+      MESSAGE i000(zmcpb) WITH '전표유형명을 불러오는데 실패했습니다.'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  "domain text가 있는 field를 가져와야 됨
+  READ TABLE gt_domain WITH KEY domvalue_l = ps_jtype INTO ls_domain.
+  IF sy-subrc = 0.
+    ps_jtype_t = ls_domain-ddtext.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GS_LIST-ILGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_gs_list-light .
+
+
+  LOOP AT gt_list INTO gs_list.
+    " 헤더 전표번호로 라인아이템 전체 읽기
+    SELECT COUNT(*)  INTO @DATA(lv_line_cnt)
+      FROM ztpbjonli
+     WHERE jocum = @gs_list-jocum.
+    SELECT COUNT(*) INTO @DATA(lv_cleared_cnt)
+      FROM ztpbjonli
+     WHERE jocum = @gs_list-jocum AND cflag = 'X'.
+
+    IF lv_cleared_cnt = 0.
+      gs_list-light = '1'.   " 모두 미결 : 빨간불
+    ELSEIF lv_cleared_cnt = lv_line_cnt.
+      gs_list-light = '3'.   " 모두 반제 : 초록불
+    ELSE.
+      gs_list-light = '2'.   " 일부 반제 : 노란불
+    ENDIF.
+
+    MODIFY gt_list FROM gs_list INDEX sy-tabix.
+  ENDLOOP.
+
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+
+  "Screen 100 alv (전표 header)
+  PERFORM gs_fcat.
+
+  "Screen 200 alv (전표 Line Item)
+  PERFORM gs_ifcat.
+
+  "Screen 300 alv
+  PERFORM gs_clfcat.
+
+  "Popup Screen alv
+  PERFORM gs_popcat.
+
+  "Screen 400 alv jh
+  PERFORM gs_jhfcat.
+
+  "Screen 400 alv ji
+  PERFORM gs_jifcat.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_fcat .
+
+  CLEAR gs_fcat.
+  gs_fcat-icon = 'X'.
+  gs_fcat-fieldname = 'DTYPE'.
+  gs_fcat-no_out = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'PDATE'.
+  gs_fcat-coltext = '전기일자'.
+  APPEND gs_fcat TO gt_fcat.
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'LIGHT'.
+  gs_fcat-coltext = '전표상태'.
+  APPEND gs_fcat TO gt_fcat.
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'JTYPE_T'.
+  gs_fcat-coltext = '전표유형명'.
+  APPEND gs_fcat TO gt_fcat.
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'JOCUM'.
+  gs_fcat-hotspot = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+
+  CLEAR gs_fcat.
+  gs_fcat-fieldname = 'REFDO'.
+  gs_fcat-hotspot = 'X'.
+  APPEND gs_fcat TO gt_fcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_IFCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_ifcat .
+
+  CLEAR gs_ifcat.
+  gs_ifcat-fieldname = 'DBCRF'.
+  gs_ifcat-coltext = '차 / 대'.
+  APPEND gs_ifcat TO gt_ifcat.
+
+  CLEAR gs_ifcat.
+  gs_ifcat-fieldname = 'LIGHT'.
+  gs_ifcat-coltext = '전표상태'.
+  APPEND gs_ifcat TO gt_ifcat.
+
+  CLEAR gs_ifcat.
+  gs_ifcat-fieldname = 'CFLAGI'.
+  gs_ifcat-coltext = '반제여부'.
+  gs_ifcat-icon      = 'X'.
+  gs_ifcat-col_pos = 99.
+  APPEND gs_ifcat TO gt_ifcat.
+
+  CLEAR gs_ifcat.
+  gs_ifcat-fieldname = 'CFLAG'.
+  gs_ifcat-no_out = 'X'.
+  APPEND gs_ifcat TO gt_ifcat.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_CLFCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_clfcat .
+
+  CLEAR gs_clfcat.
+  gs_clfcat-fieldname = 'DBCRF'.
+  gs_clfcat-coltext = '차 / 대'.
+  APPEND gs_clfcat TO gt_clfcat.
+
+  CLEAR gs_clfcat.
+  gs_clfcat-fieldname = 'LIGHT'.
+  gs_clfcat-coltext = '전표상태'.
+  APPEND gs_clfcat TO gt_clfcat.
+
+  CLEAR gs_clfcat.
+  gs_clfcat-fieldname = 'CFLAGI'.
+  gs_clfcat-coltext = '반제여부'.
+  gs_clfcat-icon      = 'X'.
+  gs_clfcat-col_pos = 99.
+  APPEND gs_clfcat TO gt_clfcat.
+
+  CLEAR gs_clfcat.
+  gs_clfcat-fieldname = 'CFLAG'.
+  gs_clfcat-no_out = 'X'.
+  APPEND gs_clfcat TO gt_clfcat.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_POPCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_popcat .
+
+  CLEAR gs_popfcat.
+  gs_popfcat-fieldname = 'DBCRF'.
+  gs_popfcat-coltext = '차 / 대'.
+  APPEND gs_popfcat TO gt_popfcat.
+
+  CLEAR gs_popfcat.
+  gs_popfcat-fieldname = 'LIGHT'.
+  gs_popfcat-coltext = '전표상태'.
+  APPEND gs_popfcat TO gt_popfcat.
+
+  CLEAR  gs_popfcat.
+  gs_popfcat-fieldname = 'CFLAGI'.
+  gs_popfcat-coltext = '반제여부'.
+  gs_popfcat-icon      = 'X'.
+  gs_popfcat-col_pos = 99.
+  APPEND gs_popfcat TO gt_popfcat.
+
+  CLEAR  gs_popfcat.
+  gs_popfcat-fieldname = 'CFLAG'.
+  gs_popfcat-no_out = 'X'.
+  APPEND gs_popfcat TO gt_popfcat.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+
+  CLEAR gt_sort.
+  gs_sort-spos = '1'.
+  gs_sort-fieldname = 'FYEAR'.
+  gs_sort-down = 'X'. "내림차순
+  APPEND gs_sort TO gt_sort.
+  CLEAR gs_sort.
+
+  gs_sort-spos = '2'.
+  gs_sort-fieldname = 'FPERI'.
+  gs_sort-down = 'X'. "내림차순
+  APPEND gs_sort TO gt_sort.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GS_CLITEM_LIST-LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_gs_clitem_list-light .
+
+  "신호등
+  LOOP AT gt_clitem_list INTO gs_clitem_list.
+
+    " 미결 상태인 경우
+    IF gs_clitem_list-cflag = ''.
+      gs_clitem_list-light = '1'. " 빨간불(미결)
+
+      " 반제 상태인 경우
+    ELSEIF gs_clitem_list-cflag = 'X'.
+      gs_clitem_list-light = '3'. " 초록불(반제)
+
+    ENDIF.
+    MODIFY gt_clitem_list FROM gs_clitem_list.
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GO_JH
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_go_jh .
+
+  CREATE OBJECT go_jh
+    EXPORTING
+      container_name = 'JH'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Custom Container Error'.
+  ENDIF.
+
+
+  CREATE OBJECT go_jh_alv
+    EXPORTING
+      i_parent = go_jh.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Alv Error'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_GO_JH_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_go_jh_alv .
+
+  CALL METHOD go_jh_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4020'
+*     i_default        = 'X'
+      is_layout        = gs_jhlayo
+    CHANGING
+      it_outtab        = gt_jhlist
+      it_fieldcatalog  = gt_jhfcat.
+*      it_sort          = gt_jhsort.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GO_JI
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM create_go_ji .
+
+  CREATE OBJECT go_ji
+    EXPORTING
+      container_name = 'JI'.
+
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Custom Container Error'.
+  ENDIF.
+
+
+  CREATE OBJECT go_ji_alv
+    EXPORTING
+      i_parent = go_ji.
+  IF sy-subrc <> 0.
+    MESSAGE i000(zmcpb) WITH 'Create Alv Error'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_GO_JI_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_go_ji_alv .
+
+  CALL METHOD go_ji_alv->set_table_for_first_display
+    EXPORTING
+      i_structure_name = 'ZSPB4021'
+*     i_default        = 'X'
+      is_layout        = gs_jilayo
+    CHANGING
+      it_outtab        = gt_jilist
+      it_fieldcatalog  = gt_jifcat
+      it_sort          = gt_jisort.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_JHFCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_jhfcat .
+
+
+  CLEAR gs_jhfcat.
+  gs_jhfcat-icon = 'X'.
+  gs_jhfcat-fieldname = 'DTYPE'.
+  gs_jhfcat-no_out = 'X'.
+  APPEND gs_jhfcat TO gt_jhfcat.
+
+  CLEAR gs_jhfcat.
+  gs_jhfcat-fieldname = 'LIGHT'.
+  gs_jhfcat-no_out = 'X'.
+  APPEND gs_jhfcat TO gt_jhfcat.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GS_JIFCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM gs_jifcat .
+
+  CLEAR gs_jifcat.
+  gs_jifcat-fieldname = 'DBCRF'.
+  gs_jifcat-coltext = '차 / 대'.
+  APPEND gs_jifcat TO gt_jifcat.
+
+  CLEAR gs_jifcat.
+  gs_jifcat-fieldname = 'LIGHT'.
+  gs_jifcat-no_out = 'X'.
+  APPEND gs_jifcat TO gt_jifcat.
+
+  CLEAR gs_jifcat.
+  gs_jifcat-fieldname = 'CFLAGI'.
+  gs_jifcat-coltext = '반제여부'.
+  gs_jifcat-icon      = 'X'.
+  gs_jifcat-col_pos = 99.
+  APPEND gs_jifcat TO gt_jifcat.
+
+  CLEAR gs_jifcat.
+  gs_jifcat-fieldname = 'CFLAG'.
+  gs_jifcat-no_out = 'X'.
+  APPEND gs_jifcat TO gt_jifcat.
+
+  CLEAR gs_jifcat.
+  gs_jifcat-fieldname = 'PRICE'.
+  gs_jifcat-do_sum = ''.
+  APPEND gs_jifcat TO gt_jifcat.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_GS_JHJILIST-LIGHT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_gs_jilist-light .
+
+
+  LOOP AT gt_jilist INTO gs_jilist.
+    " 헤더 전표번호로 라인아이템 전체 읽기
+    SELECT COUNT(*)  INTO @DATA(lv_line_cnt)
+      FROM ztpbjonli
+     WHERE jocum = @gs_list-jocum.
+    SELECT COUNT(*) INTO @DATA(lv_cleared_cnt)
+      FROM ztpbjonli
+     WHERE jocum = @gs_list-jocum AND cflag = 'X'.
+
+    IF lv_cleared_cnt = 0.
+      gs_jilist-light = '1'.   " 모두 미결 : 빨간불
+    ELSEIF lv_cleared_cnt = lv_line_cnt.
+      gs_jilist-light = '3'.   " 모두 반제 : 초록불
+    ELSE.
+      gs_jilist-light = '2'.   " 일부 반제 : 노란불
+    ENDIF.
+
+    MODIFY gt_jilist FROM gs_jilist INDEX sy-tabix.
+  ENDLOOP.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  MOVE_TO_REVERSE_PROGRAM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM move_to_reverse_program .
+
+  DATA: lt_selected_jocum TYPE TABLE OF ztpbjonlh-jocum,
+        lt_selected_rows  TYPE lvc_t_roid,
+        ls_selected_row   TYPE lvc_s_roid,
+        lv_jocum          TYPE zspb4005-jocum.
+
+  CLEAR: lt_selected_jocum,
+         lt_selected_rows,
+         ls_selected_row.
+
+  CALL METHOD go_alv->get_selected_rows
+    IMPORTING
+      et_row_no = lt_selected_rows.
+
+
+  LOOP AT lt_selected_rows INTO ls_selected_row.
+    READ TABLE gt_list INDEX ls_selected_row-row_id INTO DATA(ls_data).
+    IF sy-subrc = 0.
+      APPEND ls_data-jocum TO lt_selected_jocum.
+    ENDIF.
+  ENDLOOP.
+
+  IF lines( lt_selected_jocum  ) > 1.
+    MESSAGE i000(zmcpb) WITH '역분개할 한 개의 전표만 선택해주세요.'.
+    RETURN.
+  ENDIF.
+
+  READ TABLE lt_selected_jocum INDEX 1 INTO lv_jocum.
+  IF sy-subrc = 0.
+    SET PARAMETER ID 'ZPB2031' FIELD lv_jocum.
+    CALL TRANSACTION 'ZPB2031' AND SKIP FIRST SCREEN.
+  ELSE.
+    MESSAGE i000(zmcpb) WITH '선택된 전표 번호가 없습니다.'.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_JTYPE_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_JTYPE  text
+*      <--P_LV_JNAME  text
+*----------------------------------------------------------------------*
+FORM get_jtype_name
+  USING VALUE(ps_jtype)
+  CHANGING ps_jtype_t TYPE zspb4005-jtype_t.
+
+  DATA: ls_domain  LIKE LINE OF gt_domain.
+
+  IF gt_domain IS INITIAL.
+
+    CALL FUNCTION 'GET_DOMAIN_VALUES'
+      EXPORTING
+        domname         = 'ZDPB_JTYPE'
+      TABLES
+        values_tab      = gt_domain
+      EXCEPTIONS
+        no_values_found = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+      MESSAGE i000(zmcpb) WITH '계정유형명을 불러오는데 실패했습니다.'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+
+  "domain text가 있는 field를 가져와야 됨
+  READ TABLE gt_domain WITH KEY domvalue_l = ps_jtype INTO ls_domain.
+  IF sy-subrc = 0.
+    ps_jtype_t = ls_domain-ddtext.
+  ENDIF.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

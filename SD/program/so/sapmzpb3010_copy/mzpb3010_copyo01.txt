@@ -1,0 +1,121 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB3010O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_LED_RED'
+    IMPORTING
+      result = icon_nk.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_LED_GREEN'
+    IMPORTING
+      result = icon_ok.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_MESSAGE_INFORMATION'
+    IMPORTING
+      result = icon_n1.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_MESSAGE_INFORMATION'
+    IMPORTING
+      result = icon_n2.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_MESSAGE_INFORMATION'
+    IMPORTING
+      result = icon_n3.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF go_con IS INITIAL.
+    PERFORM create_alv USING 'CON' go_con go_alv.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->handler_hotspot_click FOR go_alv ACTIVATION 'X'.
+
+    PERFORM get_so_list CHANGING gv_subrc.
+    PERFORM set_rcv_stock.
+    PERFORM set_all_stock_status CHANGING gt_data.
+
+    PERFORM set_sort USING 'X' CHANGING gt_sort.
+    PERFORM set_light.
+    PERFORM set_alv_layout USING 'X'
+                         CHANGING gs_layo.
+    PERFORM set_fcat USING 'X'.
+    PERFORM display_alv USING go_alv 'ZSPB1006'
+                        CHANGING gs_layo gt_data gt_fcat gt_sort.
+  ELSE.
+    PERFORM set_rcv_stock.
+    PERFORM set_all_stock_status CHANGING gt_data.
+    PERFORM set_light.
+    PERFORM refresh_alv USING go_alv.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0101 OUTPUT.
+  SET PF-STATUS 'S101'.
+  SET TITLEBAR 'T101' WITH gv_sokey.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_DEFAULT_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_default_0101 OUTPUT.
+  CLEAR gv_sokey.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0101 OUTPUT.
+  IF go_con_stock IS INITIAL.
+    PERFORM create_alv USING 'CON_STOCK' go_con_stock go_alv_stock.
+    PERFORM set_stock_status CHANGING gt_stock.
+    PERFORM set_sort USING 'A' CHANGING gt_sort_stock.
+    PERFORM set_light_item.
+    PERFORM set_alv_layout USING 'A'
+                         CHANGING gs_layo_stock.
+    PERFORM set_fcat USING 'A'.
+    PERFORM display_alv USING go_alv_stock 'ZSPB1025'
+                        CHANGING gs_layo_stock gt_stock gt_fcat_stock gt_sort_stock.
+  ELSE.
+    PERFORM set_stock_status CHANGING gt_stock.
+    PERFORM set_light_item.
+    PERFORM refresh_alv USING go_alv_stock.
+  ENDIF.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

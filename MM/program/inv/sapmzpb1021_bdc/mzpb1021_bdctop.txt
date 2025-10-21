@@ -1,0 +1,42 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1021TOP                                       Module Pool      SAPMZPB1021
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1021.
+
+TABLES: zspb2101, zspb2102, zspb2103, zspb2104, zspb2105.
+
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc.
+
+DATA: go_con_0100  TYPE REF TO cl_gui_custom_container,
+      go_grid_0100 TYPE REF TO cl_gui_alv_grid,
+      go_con_0200  LIKE go_con_0100,
+      go_grid_0200 LIKE go_grid_0100,
+      go_con_0300  LIKE go_con_0100,
+      go_grid_0300 LIKE go_grid_0100.
+
+RANGES: gr_plant FOR ztpbstorage-plant,
+        gr_lgort FOR ztpbstorage-lgort.
+
+DATA: BEGIN OF gs_list.
+    INCLUDE STRUCTURE zspb2102.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+DATA: gs_col LIKE LINE OF gs_list-lt_col.
+
+DATA: gs_insert TYPE zspb2102,
+      gt_insert LIKE TABLE OF gs_insert.
+
+DATA: gs_before TYPE zspb2104.
+
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gs_data TYPE zspb2103,
+      gt_data LIKE TABLE OF gs_data.
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

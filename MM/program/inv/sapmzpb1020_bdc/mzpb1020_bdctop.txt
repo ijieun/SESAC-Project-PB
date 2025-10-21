@@ -1,0 +1,35 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1020TOP                                       Module Pool      SAPMZPB1020
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1020.
+
+TABLES: zspb2001, zspb2003, zspb2004, zspb2005.
+
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc.
+
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_grid TYPE REF TO cl_gui_alv_grid.
+
+RANGES gr_plant FOR ztpbplant-plant.
+
+DATA: BEGIN OF gs_list.
+    INCLUDE STRUCTURE zspb2002.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+DATA: gs_col LIKE LINE OF gs_list-lt_col.
+
+DATA: gs_before TYPE zspb2004.
+
+TABLES: rlgrap.
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gs_data TYPE zspb2003,
+      gt_data LIKE TABLE OF gs_data.
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

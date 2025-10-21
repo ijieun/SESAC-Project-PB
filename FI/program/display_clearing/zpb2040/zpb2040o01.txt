@@ -1,0 +1,27 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2040O01
+*&---------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH'[PB] 반제 전표 상세 조회'.
+
+ENDMODULE.
+
+
+MODULE set_alv_0100 OUTPUT.
+
+  PERFORM set_layout.
+  PERFORM set_sort.
+
+  IF go_alv IS INITIAL.
+    PERFORM create_alv.
+    PERFORM display_alv.
+
+  ELSE.
+    CALL METHOD go_alv->refresh_table_display.
+  ENDIF.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

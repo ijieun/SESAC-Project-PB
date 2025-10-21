@@ -1,0 +1,51 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1040TOP                                    Module Pool      SAPMZPB1040
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1040.
+
+"COMMON
+DATA: ok_code  LIKE sy-ucomm,
+      gv_dynnr LIKE sy-dynnr,
+      gv_subrc LIKE sy-subrc.
+
+RANGES rv_glacc FOR ztpbgla-glacc. "range 변수 정의
+
+"numberange 변수 정의
+DATA: gv_range_nr  TYPE c LENGTH 2, "번호범위의 인터벌 번호를 저장하는 변수
+      gv_object    TYPE c LENGTH 9 VALUE 'ZNRPB4001', "NUMBER RANGE 오브젝트명을 저장
+      gv_new_glacc TYPE n LENGTH 8.
+DATA gs_ztpbgla TYPE ztpbgla.
+
+"Screen 100, 200, 300, 400 CONDITION
+TABLES: zspb4001, zspb4002, zspb4003, zspb4004.
+
+"get alv list
+DATA: gt_list TYPE TABLE OF ztpbgla,
+      gs_list LIKE ztpbgla.
+
+"ALV
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo.
+
+"ALV layout
+DATA: gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat.
+
+"Domain Fixed Value
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+"BDC Program
+TABLES: rlgrap.
+DATA: gs_bdc  TYPE bdcdata,
+      gt_bdc  LIKE TABLE OF gs_bdc,
+      gv_file TYPE rlgrap-filename,
+      gs_data TYPE zspb4002,
+      gt_data LIKE TABLE OF gs_data.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

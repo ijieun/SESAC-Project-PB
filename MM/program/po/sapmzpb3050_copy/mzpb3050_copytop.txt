@@ -1,0 +1,91 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB3050TOP                                       Module Pool      SAPMZPB3050
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb3050.
+
+*&---------------------------------------------------------------------*
+" Common
+*&---------------------------------------------------------------------*
+DATA: ok_code      TYPE sy-ucomm,
+      gv_subrc     TYPE sy-subrc,
+      gv_datum     TYPE sy-datum,
+      wait_icon    TYPE icons-text,
+      reject_icon  TYPE icons-text,
+      receive_icon TYPE icons-text.
+
+*&---------------------------------------------------------------------*
+" ICON
+*&---------------------------------------------------------------------*
+DATA: info_icon TYPE icons-text.
+
+DATA:  gv_pokey TYPE ztpbpoh-ponum.
+
+*&---------------------------------------------------------------------*
+" PO 승인 Header ALV List 조회
+*&---------------------------------------------------------------------*
+DATA: BEGIN OF gs_list.
+    INCLUDE TYPE zspb5032.
+DATA: cel_col TYPE lvc_t_scol,
+      color   TYPE c LENGTH 4,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+
+*&---------------------------------------------------------------------*
+" 가용 재고 조회
+*&---------------------------------------------------------------------*
+DATA: BEGIN OF gs_stock.
+    INCLUDE TYPE zspb5024.
+DATA: cel_col TYPE lvc_t_scol,
+      END OF gs_stock,
+      gt_stock LIKE TABLE OF gs_stock.
+DATA: gs_col LIKE LINE OF gs_stock-cel_col.
+
+*&---------------------------------------------------------------------*
+" Condition
+TABLES zspb5010.
+
+" Info
+TABLES: zspb5011, " Count
+        zspb5032, " PO ALV
+        zspb5024. " 가용재고 ALV
+
+*&---------------------------------------------------------------------*
+* Domain Fixed Value
+*&---------------------------------------------------------------------*
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+*&---------------------------------------------------------------------*
+" ALV Components
+*&---------------------------------------------------------------------*
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+" ALV Components - Item
+DATA: go_con_stock  TYPE REF TO cl_gui_custom_container,
+      go_alv_stock  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_stock TYPE lvc_s_layo,
+      gt_fcat_stock TYPE lvc_t_fcat,
+      gs_fcat_stock LIKE LINE OF gt_fcat_stock,
+      gt_sort_stock TYPE lvc_t_sort,
+      gs_sort_stock LIKE LINE OF gt_sort_stock.
+
+*&---------------------------------------------------------------------*
+" Handler
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS:
+      handler_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING e_row_id  e_column_id es_row_no.
+ENDCLASS.
+DATA go_handler TYPE REF TO lcl_event_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

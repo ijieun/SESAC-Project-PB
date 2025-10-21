@@ -1,0 +1,9 @@
+* regenerated at 2025.09.11 10:23:18
+FUNCTION-POOL ZFGPB                      MESSAGE-ID SV.
+
+* INCLUDE LZFGPBD...                         " Local class definition
+  INCLUDE LSVIMDAT                                . "general data decl.
+  INCLUDE LZFGPBT00                               . "view rel. data dcl.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,96 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4010I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE sy-ucomm.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      PERFORM get_so_list CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        MESSAGE s008(zmcpb).
+      ENDIF.
+
+    WHEN 'ENTER'.
+      PERFORM get_customer_name USING zspb1004-cusnr CHANGING zspb1004-custt.
+
+    WHEN 'TAB1' OR 'TAB2'.
+      mytab-activetab = ok_code.
+
+    WHEN 'BTN_GI'. "출고
+      IF gv_sokey IS NOT INITIAL.
+        PERFORM check_gi_status.
+      ENDIF.
+    WHEN 'DETAIL'. "상세조회
+      PERFORM get_gi_info CHANGING gv_subrc.
+      IF gv_subrc IS INITIAL.
+        PERFORM get_gi_detail_info CHANGING gv_subrc.
+        CALL SCREEN 0200.
+      ENDIF.
+  ENDCASE.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      CLEAR: zspb1017, zspb1008, zspb1003.
+      LEAVE TO SCREEN 0.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0103  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0103 INPUT.
+  CASE ok_code.
+    WHEN 'CHECK'.
+      PERFORM confirm_popup_receive .
+      CLEAR zspb1022.
+      CLEAR gt_temp.
+      LEAVE TO SCREEN 0.
+
+
+    WHEN 'CLOSE'.
+      CLEAR zspb1022.
+      CLEAR gt_temp.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'CANCEL'.
+      CLEAR zspb1022.
+      CLEAR gt_temp.
+      LEAVE TO SCREEN 0.
+
+  ENDCASE.
+
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

@@ -1,0 +1,49 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPB2040
+*&
+*&---------------------------------------------------------------------*
+*& 잔액 합계 시산표 PROGRAM
+*&---------------------------------------------------------------------*
+
+INCLUDE zpb2041top. " global Data
+INCLUDE zpb2041o01. " PBO-Modules
+INCLUDE zpb2041i01. " PAI-Modules
+INCLUDE zpb2041f01. " FORM-Routines
+
+INITIALIZATION. "기본값
+  PERFORM set_default.
+
+START-OF-SELECTION.   "EVENT
+
+  IF so_fweek-low IS NOT INITIAL OR so_fweek-high IS NOT INITIAL.
+
+    PERFORM GET_INFO.
+    CALL SCREEN 0100.
+
+  ENDIF.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+
+*Text elements
+*----------------------------------------------------------
+* T01 기본 조회 조건
+* T02 반제 전표 조회 조건
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_FPERI         회계기간
+* PA_FWEEK         회계주차
+* PA_FYEAR         회계연도
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

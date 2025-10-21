@@ -1,0 +1,121 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2023TOP                                       Module Pool      SAPMZPB2023
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2023.
+*&---------------------------------------------------------------------*
+*& TABLES
+*&---------------------------------------------------------------------*
+TABLES: zspb2021, zspb2013, zspb2014, zspb2017.
+*----------------------------------------------------------------------*
+* Constant                                                             *
+*----------------------------------------------------------------------*
+CONSTANTS: gc_a               TYPE c VALUE 'A',
+           gc_c               TYPE c VALUE 'C',
+           gc_w               TYPE c VALUE 'W',
+           gc_x               TYPE c VALUE 'X',
+           gc_p               TYPE c VALUE 'P',
+           gc_r               TYPE c VALUE 'R',
+           gc_iv              TYPE c LENGTH 2 VALUE 'IV',
+           gc_light           TYPE c LENGTH 5 VALUE 'LIGHT',
+           gc_lcolor          TYPE c LENGTH 6 VALUE 'LCOLOR',
+           gc_icon_checked    TYPE c LENGTH 4 VALUE '@01@',
+           gc_icon_incomplete TYPE c LENGTH 4 VALUE '@02@'.
+*&---------------------------------------------------------------------*
+*& COMMON
+*&---------------------------------------------------------------------*
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_dynnr TYPE sy-dynnr.
+DATA: gv_inv TYPE ztpbinvh-invno. " 생성한 송장 체크
+*&---------------------------------------------------------------------*
+*& CON & ALV
+*&---------------------------------------------------------------------*
+DATA: go_con_0100 TYPE REF TO cl_gui_custom_container, " 메인
+      go_alv_0100 TYPE REF TO cl_gui_alv_grid,
+      go_con_0110 TYPE REF TO cl_gui_custom_container, " 팝업
+      go_alv_0110 TYPE REF TO cl_gui_alv_grid,
+      go_con_0200 TYPE REF TO cl_gui_custom_container, " 등록화면
+      go_alv_0200 TYPE REF TO cl_gui_alv_grid,
+      go_con_0300 TYPE REF TO cl_gui_custom_container, " 상세정보
+      go_alv_0300 TYPE REF TO cl_gui_alv_grid.
+
+DATA: gs_layo_h TYPE lvc_s_layo,
+      gs_layo_i TYPE lvc_s_layo,
+      gt_fcat_h TYPE lvc_t_fcat,
+      gt_fcat_i TYPE lvc_t_fcat.
+*      gt_sort_h TYPE lvc_t_sort,
+*      gt_sort_i TYPE lvc_t_sort,
+*      gs_excl   TYPE ui_func,
+*      gt_excl   TYPE ui_functions.
+*&---------------------------------------------------------------------*
+*& RANGES
+*&---------------------------------------------------------------------*
+RANGES: gr_vendr  FOR ztpbvendor-vendr,
+        gr_custom FOR ztpbcustom-cusnr,
+        gr_grnum  FOR ztpbgrh-grnum,
+        gr_ginum  FOR ztpbgih-ginum,
+*        gr_stdat  FOR ztpbgrh-stdat,
+*        gr_pgidt  FOR ztpbgih-pgidt,
+        gr_iflag  FOR ztpbinvh-iflag.
+DATA: gr_stdat TYPE ztpbdate.
+DATA: gr_pgidt TYPE ztpbdate.
+*&---------------------------------------------------------------------*
+*& TABLE VARIABLE: 업체명, 상품명
+*&---------------------------------------------------------------------*
+DATA: gt_custom    TYPE TABLE OF ztpbcustom,
+      gt_vendor    TYPE TABLE OF ztpbvendor,
+      gt_product_t TYPE TABLE OF ztpbproduct_t.
+*&---------------------------------------------------------------------*
+*& DOMAIN
+*&---------------------------------------------------------------------*
+DATA: gt_domain    TYPE TABLE OF dd07v.
+*&---------------------------------------------------------------------*
+*& ALV LIST
+*&---------------------------------------------------------------------*
+" 0100(조회) ALV 헤더 List
+DATA: BEGIN OF gs_list_h.
+    INCLUDE TYPE zspb2022.
+DATA: light  TYPE c,
+      lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list_h,
+      gt_list_h LIKE TABLE OF gs_list_h.
+
+" 0110(조회) ALV 아이템 List
+DATA: BEGIN OF gs_list_i.
+    INCLUDE TYPE zspb2022_1.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_list_i,
+      gt_list_i LIKE TABLE OF gs_list_i.
+
+" 0200(등록) ALV 아이템 List
+DATA: BEGIN OF gs_display_item.
+    INCLUDE TYPE zspb2014.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_display_item,
+      gt_display_item LIKE TABLE OF gs_display_item.
+
+" 0300(상세조회) alv 아이템 List
+DATA: BEGIN OF gs_detail_i.
+    INCLUDE TYPE zspb2022_1.
+DATA: lt_col TYPE lvc_t_scol,
+      lcolor TYPE c LENGTH 4,
+      END OF gs_detail_i,
+      gt_detail_i LIKE TABLE OF gs_detail_i.
+*&---------------------------------------------------------------------*
+*& CLASS
+*&---------------------------------------------------------------------*
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS: handle_double_click
+    FOR EVENT double_click OF cl_gui_alv_grid IMPORTING e_row e_column es_row_no.
+
+    CLASS-METHODS: handle_hotspot_click
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no.
+ENDCLASS.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

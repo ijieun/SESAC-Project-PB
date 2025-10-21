@@ -1,0 +1,49 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2010_O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0100 OUTPUT.
+  IF go_con IS INITIAL.
+    PERFORM create_alv CHANGING go_con go_alv.
+
+    PERFORM set_light.
+    PERFORM set_rejected_order_color.
+    PERFORM set_layo USING 'X'
+                         CHANGING gs_layo.
+    PERFORM set_fcat USING 'X' CHANGING gt_fcat.
+    PERFORM set_sort USING 'X' CHANGING gt_sort.
+
+    PERFORM display_alv USING go_alv 'ZSPB1020' CHANGING gs_layo gt_data gt_fcat gt_sort.
+  ELSE.
+    PERFORM set_light.
+    CALL METHOD go_alv->refresh_table_display
+      EXCEPTIONS
+        finished = 1
+        OTHERS   = 2.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0110 OUTPUT.
+  SET PF-STATUS 'S110'.
+  SET TITLEBAR 'T100'.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

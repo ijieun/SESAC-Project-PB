@@ -1,0 +1,57 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB1031TOP                                       Module Pool      SAPMZPB1031
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb1031.
+
+" BDC
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gt_excel TYPE zspb3003_t,
+      gs_excel LIKE LINE OF gt_excel.
+
+" Common
+DATA: ok_code  TYPE sy-ucomm,
+      gv_subrc TYPE sy-subrc,
+      gv_dynnr TYPE sy-dynnr.
+
+" Screen 100 Condition
+DATA: gv_fullname TYPE ddtext.
+
+" Screen 100 ALV List
+TABLES zspb3003.
+DATA: gs_data TYPE zspb3003,
+      gt_data LIKE TABLE OF gs_data.
+
+DATA: gs_emp LIKE ztpbemp,
+      gt_emp LIKE TABLE OF gs_emp.
+
+" Screen 200, 300, 400
+TABLES zspb3004.
+
+" Screen 300 Previous Info
+DATA: BEGIN OF gs_pinfo,
+        pernr TYPE zspb3004-pernr,
+        lname TYPE zspb3004-lname,
+        fname TYPE zspb3004-fname,
+        pname TYPE zspb3004-pname,
+        vendt TYPE zspb3004-vendt,
+        phone TYPE zspb3004-phone,
+        adres TYPE zspb3004-adres,
+        pflag TYPE zspb3004-pflag,
+      END OF gs_pinfo,
+      gt_pinfo LIKE TABLE OF gs_pinfo.
+
+" ALV Components
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

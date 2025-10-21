@@ -1,0 +1,180 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPB2031
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+INCLUDE zpb2031top                              .    " global Data
+
+INCLUDE zpb2031o01                              .  " PBO-Modules
+INCLUDE zpb2031i01                              .  " PAI-Modules
+INCLUDE zpb2031f01                              .  " FORM-Routines
+
+INITIALIZATION.
+
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+
+    IF screen-name = 'PA_CCODE'.
+      screen-input = '0'.
+      MODIFY SCREEN.
+    ENDIF.
+
+    IF screen-name = 'PA_COMPT'.
+      screen-input = '0'.
+      screen-active = '1'.
+      MODIFY SCREEN.
+    ENDIF.
+
+  ENDLOOP.
+
+AT SELECTION-SCREEN.
+
+START-OF-SELECTION.
+
+  DATA lv_limit TYPE i.
+  lv_limit = pa_max.
+
+  SELECT pdate
+         fyear
+         fperi
+         a~jocum
+         jtype
+         glacc
+         dbcrf
+         cflag
+         price AS price_s
+         pokey
+         a~waers
+         descr
+    FROM ztpbjonli AS a INNER JOIN ztpbjonlh AS b ON a~jocum = b~jocum
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    UP TO lv_limit ROWS
+    ORDER BY pdate DESCENDING.
+
+  IF gt_data IS INITIAL.
+    MESSAGE s001(zmcpb) WITH '입력조건과'(c02). " & & & & 일치하는 정보가 없습니다.
+    RETURN.
+  ENDIF.
+
+  PERFORM get_domain.
+  PERFORM get_db.
+
+  CLEAR: gv_s, gv_h.
+
+  LOOP AT gt_data INTO gs_data.
+
+    " 행 색 넣기
+    IF so_glacc IS INITIAL." AND pa_cfl_a IS INITIAL AND pa_cfl_b IS INITIAL.
+      IF sy-tabix MOD 4 = 1 OR sy-tabix MOD 4 = 2.
+        gs_data-row_col = 'C500'.
+      ENDIF.
+    ELSE.
+*      gs_data-row_col = 'C300'.
+    ENDIF.
+
+    " 반제여부
+    IF gs_data-cflag = 'X'.
+      gs_data-cflag_t = '반제완료'.
+    ENDIF.
+
+    " 거래사명
+    PERFORM get_compt.
+
+    " 전표유형명
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_JTYPE' domvalue_l = gs_data-jtype INTO gs_domain.
+    gs_data-jtype_t = gs_domain-ddtext.
+    CLEAR gs_domain.
+
+    " 계정과목명
+    SELECT SINGLE gname
+      FROM ztpbgla
+      INTO gs_data-gname
+      WHERE glacc = gs_data-glacc.
+
+    " 차변/대변
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_DBCRF' domvalue_l = gs_data-dbcrf INTO gs_domain.
+    gs_data-dbcrf_t = gs_domain-ddtext.
+    CLEAR gs_domain.
+
+    " 전기 키
+    READ TABLE gt_domain WITH KEY domname = 'ZDPB_POKEY' domvalue_l = gs_data-pokey INTO gs_domain.
+    gs_data-pokey_t = gs_domain-ddtext.
+    CLEAR gs_domain.
+
+    IF gs_data-dbcrf = 'S'. " 차변
+      gv_s = gv_s + gs_data-price_s.
+    ELSEIF gs_data-dbcrf = 'H'. " 대변
+      gs_data-price_h = gs_data-price_s.
+      gs_data-price_s = 0.
+      gv_h = gv_h + gs_data-price_h.
+    ENDIF.
+
+    IF gs_data-dbcrf = 'H' AND gs_data-glacc = 40000000. " 매출액
+      gv_sales = gv_sales + gs_data-price_h.
+    ENDIF.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+  gv_balance = gv_s - gv_h.
+
+  IF so_glacc-low IS NOT INITIAL.
+    zspb3300-glacc = so_glacc-low.
+  ELSEIF so_glacc-high IS NOT INITIAL.
+    zspb3300-glacc = so_glacc-high.
+  ENDIF.
+
+  SELECT SINGLE gname
+      FROM ztpbgla
+      INTO zspb3300-gname
+      WHERE glacc = zspb3300-glacc.
+
+  PERFORM search_conds.
+  CHECK gv_subrc IS INITIAL.
+
+  CALL SCREEN 100.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+
+*Text elements
+*----------------------------------------------------------
+* C01 계정 명세 조회
+* C02 입력조건과
+* C03 전기일
+* C04 회계연도
+* C05 회계기간
+* C06 을 일치시키십시오.
+* T01 검색 조건
+* T02 미결
+* T03 반제완료
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_CCODE         회사 코드
+* PA_MAX         최대 데이터 수
+* SO_CUSNR D       .
+* SO_FPERI D       .
+* SO_FYEAR D       .
+* SO_GLACC D       .
+* SO_JTYPE D       .
+* SO_PDATE D       .
+* SO_VENDR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*001   & & & & 일치하는 정보가 없습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

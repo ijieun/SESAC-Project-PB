@@ -1,0 +1,49 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       SAPMZPB1040
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+
+INCLUDE MZPB1040_BDCTOP.
+*INCLUDE mzpb1040_copytop.
+*INCLUDE MZPB1040_1TOP.
+*INCLUDE mzpb1040top                          .    " global Data
+
+INCLUDE MZPB1040_BDCO01.
+*INCLUDE mzpb1040_copyo01.
+*INCLUDE MZPB1040_1O01.
+*INCLUDE mzpb1040o01                          .  " PBO-Modules
+INCLUDE MZPB1040_BDCI01.
+*INCLUDE mzpb1040_copyi01.
+*INCLUDE MZPB1040_1I01.
+*INCLUDE mzpb1040i01                          .  " PAI-Modules
+INCLUDE MZPB1040_BDCF01.
+*INCLUDE mzpb1040_copyf01.
+*INCLUDE MZPB1040_1F01.
+*INCLUDE mzpb1040f01                          .  " FORM-Routines
+
+LOAD-OF-PROGRAM.
+
+  PERFORM set_default.
+  PERFORM get_alv_list.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> [FI] 계정과목 CRUD PROGRAM
+* T200 --> 신규 계정과목 생성
+* T300 --> 계정과목 변경
+* T400 --> 계정과목 상세조회
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*006   & 이미 존재하는 & 입니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

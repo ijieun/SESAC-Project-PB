@@ -1,0 +1,258 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2030TOP                                       Module Pool      SAPMZPB2030
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2030.
+
+" Common
+DATA: ok_code          TYPE sy-ucomm,
+      gv_subrc         TYPE sy-subrc,
+      gv_dynnr         TYPE sy-dynnr,
+      gv_subscreenh_no TYPE sy-dynnr,
+      gv_subscreeni_no TYPE sy-dynnr.
+
+" BDC
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+TABLES zspb3200.
+
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gt_excel TYPE TABLE OF zspb3200,
+      gs_excel LIKE LINE OF gt_excel.
+
+" Class
+CLASS lcl_handler DEFINITION.
+
+  PUBLIC SECTION.
+
+    DATA: go_alv_grid TYPE REF TO cl_gui_alv_grid.
+
+    CLASS-METHODS handle_hotspot_click
+    FOR EVENT hotspot_click OF cl_gui_alv_grid IMPORTING e_row_id e_column_id es_row_no sender.
+
+    METHODS on_double_click FOR EVENT double_click OF cl_gui_alv_grid
+      IMPORTING es_row_no sender.
+
+ENDCLASS.
+
+DATA: go_handler TYPE REF TO lcl_handler.
+DATA gv_refdo TYPE zspb3005-refdo.
+DATA gv_alv_sel TYPE c LENGTH 1.
+
+DATA gv_itype TYPE zepb_itype_t.
+
+" Domains
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+" 송장 존재 여부 확인용
+DATA: gt_journal TYPE TABLE OF ztpbjonlh,
+      gs_journal LIKE LINE OF gt_journal.
+
+*&---------------------------------------------------------------------*
+*& SCREEN 0100 ( 전표 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3005, " 전표 헤더
+        zspb3006, " ALV & 입력용 팝업
+        zspb3008. " 참조문서 헤더
+
+DATA: gt_alv_0100 TYPE zspb3006_t,
+      gs_alv_0100 LIKE LINE OF gt_alv_0100,
+
+      gt_vendor   LIKE TABLE OF ztpbvendor,
+      gs_vendor   LIKE LINE OF gt_vendor,
+      gt_custom   LIKE TABLE OF ztpbcustom,
+      gs_custom   LIKE LINE OF gt_custom,
+      gt_product  LIKE TABLE OF ztpbproduct_t,
+      gs_product  LIKE LINE OF gt_product.
+
+" 전표 아이템 ALV
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_grid TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat TYPE lvc_s_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort TYPE lvc_s_sort.
+
+" 대차평형 표시
+DATA: gv_balance LIKE zspb3006-price,
+      gv_waers   TYPE waers VALUE 'KRW'.
+
+" 참조문서 헤더 공통 검색 조건 (날짜)
+TABLES zspb3009.
+
+*&---------------------------------------------------------------------*
+*& SCREEN 100 ( Tab Strip )
+*&---------------------------------------------------------------------*
+CONTROLS: ts_ref    TYPE TABSTRIP,
+          ts_ref_it TYPE TABSTRIP.
+
+DATA gv_visible_tab TYPE c LENGTH 6.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0102 ( 송장 참조문서 헤더 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3012. " 송장 헤더 ALV
+
+DATA: BEGIN OF gs_alv_0102.
+    INCLUDE TYPE zspb3012.
+DATA: row_col TYPE char4,
+      cel_col TYPE lvc_t_scol,
+      END OF gs_alv_0102,
+      gt_alv_0102 LIKE TABLE OF gs_alv_0102.
+
+" 참조문서 헤더 ALV
+DATA: go_con2  TYPE REF TO cl_gui_custom_container,
+      go_grid2 TYPE REF TO cl_gui_alv_grid,
+      gs_layo2 TYPE lvc_s_layo,
+      gt_fcat2 TYPE lvc_t_fcat,
+      gs_fcat2 TYPE lvc_s_fcat,
+      gt_sort2 TYPE lvc_t_sort,
+      gs_sort2 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0103 ( 송장 참조문서 아이템 )
+*&---------------------------------------------------------------------*
+TABLES: zspb2012_1. " 송장 아이템 ALV
+
+DATA: gs_alv_0103 TYPE zspb2012_1,
+      gt_alv_0103 LIKE TABLE OF gs_alv_0103.
+
+" 참조문서 아이템 ALV
+DATA: go_con3  TYPE REF TO cl_gui_custom_container,
+      go_grid3 TYPE REF TO cl_gui_alv_grid,
+      gs_layo3 TYPE lvc_s_layo,
+      gt_fcat3 TYPE lvc_t_fcat,
+      gs_fcat3 TYPE lvc_s_fcat,
+      gt_sort3 TYPE lvc_t_sort,
+      gs_sort3 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0104 ( 입고(PO) 참조문서 헤더 )
+*&---------------------------------------------------------------------*
+*TABLES: zspb5013. " 헤더 ALV
+*
+*DATA: BEGIN OF gs_alv_0104.
+*    INCLUDE TYPE zspb5013.
+*DATA: row_col TYPE char4,
+*      cel_col TYPE lvc_t_scol,
+*      END OF gs_alv_0104,
+*      gt_alv_0104 LIKE TABLE OF gs_alv_0104.
+*
+*" 참조문서 헤더 ALV
+*DATA: go_con4  TYPE REF TO cl_gui_custom_container,
+*      go_grid4 TYPE REF TO cl_gui_alv_grid,
+*      gt_fcat4 TYPE lvc_t_fcat,
+*      gs_fcat4 TYPE lvc_s_fcat,
+*      gt_sort4 TYPE lvc_t_sort,
+*      gs_sort4 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0104 ( 입고(GR) 참조문서 헤더 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3030. " 헤더 ALV
+
+DATA: BEGIN OF gs_alv_0104.
+    INCLUDE TYPE zspb3030.
+DATA: row_col TYPE char4,
+      cel_col TYPE lvc_t_scol,
+      END OF gs_alv_0104,
+      gt_alv_0104 LIKE TABLE OF gs_alv_0104.
+
+" 참조문서 헤더 ALV
+DATA: go_con4  TYPE REF TO cl_gui_custom_container,
+      go_grid4 TYPE REF TO cl_gui_alv_grid,
+      gt_fcat4 TYPE lvc_t_fcat,
+      gs_fcat4 TYPE lvc_s_fcat,
+      gt_sort4 TYPE lvc_t_sort,
+      gs_sort4 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0105 ( 입고(GR) 참조문서 아이템 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3031. " 아이템 ALV
+
+DATA: gs_alv_0105 TYPE zspb3031,
+      gt_alv_0105 LIKE TABLE OF gs_alv_0105.
+
+DATA: go_con5  TYPE REF TO cl_gui_custom_container,
+      go_grid5 TYPE REF TO cl_gui_alv_grid,
+      gt_fcat5 TYPE lvc_t_fcat,
+      gs_fcat5 TYPE lvc_s_fcat,
+      gt_sort5 TYPE lvc_t_sort,
+      gs_sort5 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0106 ( 출고(SO) 참조문서 헤더 )
+*&---------------------------------------------------------------------*
+*TABLES: zspb1006. " 헤더 ALV
+*
+*DATA: BEGIN OF gs_alv_0106.
+*    INCLUDE TYPE zspb1006.
+*DATA: row_col TYPE char4,
+*      cel_col TYPE lvc_t_scol,
+*      END OF gs_alv_0106,
+*      gt_alv_0106 LIKE TABLE OF gs_alv_0106.
+*
+*" 참조문서 헤더 ALV
+*DATA: go_con6  TYPE REF TO cl_gui_custom_container,
+*      go_grid6 TYPE REF TO cl_gui_alv_grid,
+*      gt_fcat6 TYPE lvc_t_fcat,
+*      gs_fcat6 TYPE lvc_s_fcat,
+*      gt_sort6 TYPE lvc_t_sort,
+*      gs_sort6 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0106 ( 출고(GI) 참조문서 헤더 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3032. " 헤더 ALV
+
+DATA: BEGIN OF gs_alv_0106.
+    INCLUDE TYPE zspb3032.
+DATA: row_col TYPE char4,
+      cel_col TYPE lvc_t_scol,
+      END OF gs_alv_0106,
+      gt_alv_0106 LIKE TABLE OF gs_alv_0106.
+
+" 참조문서 헤더 ALV
+DATA: go_con6  TYPE REF TO cl_gui_custom_container,
+      go_grid6 TYPE REF TO cl_gui_alv_grid,
+      gt_fcat6 TYPE lvc_t_fcat,
+      gs_fcat6 TYPE lvc_s_fcat,
+      gt_sort6 TYPE lvc_t_sort,
+      gs_sort6 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0107 ( 출고(SO) 참조문서 아이템 )
+*&---------------------------------------------------------------------*
+*TABLES: zspb1010." 아이템 ALV
+*
+*DATA: gs_alv_0107 TYPE zspb1010,
+*      gt_alv_0107 LIKE TABLE OF gs_alv_0107.
+*
+*DATA: go_con7  TYPE REF TO cl_gui_custom_container,
+*      go_grid7 TYPE REF TO cl_gui_alv_grid,
+*      gt_fcat7 TYPE lvc_t_fcat,
+*      gs_fcat7 TYPE lvc_s_fcat,
+*      gt_sort7 TYPE lvc_t_sort,
+*      gs_sort7 TYPE lvc_s_sort.
+
+*&---------------------------------------------------------------------*
+*& SUBSCREEN 0107 ( 출고(GI) 참조문서 아이템 )
+*&---------------------------------------------------------------------*
+TABLES: zspb3033." 아이템 ALV
+
+DATA: gs_alv_0107 TYPE zspb3033,
+      gt_alv_0107 LIKE TABLE OF gs_alv_0107.
+
+DATA: go_con7  TYPE REF TO cl_gui_custom_container,
+      go_grid7 TYPE REF TO cl_gui_alv_grid,
+      gt_fcat7 TYPE lvc_t_fcat,
+      gs_fcat7 TYPE lvc_s_fcat,
+      gt_sort7 TYPE lvc_t_sort,
+      gs_sort7 TYPE lvc_s_sort.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

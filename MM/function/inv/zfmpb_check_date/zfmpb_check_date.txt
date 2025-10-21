@@ -1,0 +1,201 @@
+FUNCTION zfmpb_check_date.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     REFERENCE(IV_LOW) TYPE  DATUM
+*"     REFERENCE(IV_HIGH) TYPE  DATUM
+*"  EXPORTING
+*"     REFERENCE(ET_DATE) TYPE  ZTPBDATE
+*"  EXCEPTIONS
+*"      INVALID_DATE
+*"----------------------------------------------------------------------
+*  " IV_LOW는 항상 필수값
+*  " 2025.09.01 ~ 2025.10.01 경우와
+*  " 2025.09.01 ~ '        ' 경우와
+*  " 2025.09.01 ~ 2025.08.01 경우 3가지? 형식 체크는 시스템이 알아서
+*"----------------------------------------------------------------------
+  DATA: ls_date LIKE LINE OF et_date.
+
+  CLEAR et_date.
+
+  IF iv_high IS NOT INITIAL.
+    IF iv_low > iv_high.
+      RAISE invalid_date.
+
+    ENDIF.
+    ls_date-sign = 'I'.
+    ls_date-option = 'BT'.
+    ls_date-low = iv_low.
+    ls_date-high = iv_high.
+
+  ELSE.
+    ls_date-sign   = 'I'.
+    ls_date-option = 'EQ'.
+    ls_date-low    = iv_low.
+
+  ENDIF.
+
+  IF ls_date-option IS NOT INITIAL.
+    APPEND ls_date TO et_date.
+  ENDIF.
+
+
+ENDFUNCTION.
+
+*Text elements
+*----------------------------------------------------------
+* M01 구매오더문서와 입고문서가 존재하는 건만 송장 생성이 가능합니다.
+* M02 입고 승인된 문서만 송장 생성이 가능합니다.
+* M03 이미 송장이 생성되었습니다.
+* M04 송장을 생성했습니다.
+* M05 송장을 생성하지 못했습니다.
+* M06 판매오더문서와 출고문서가 존재하는 건만 송장 생성이 가능합니다.
+* M07 출고 승인된 문서만 송장 생성이 가능합니다.
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: AM
+*287   Address cannot be maintained; entry in table TSADRV missing
+*290   Entry missing in TSADRV; new address maintenance cannot be called
+*291   Entry missing in TSADRV; new address maintenance cannot be called
+*298   Address group & not defined; delete flag for address not possible
+*
+* Message class: EC
+*089   Internal error: Unable to read screen data
+*
+* Message class: SCPR
+*026   Table & is too wide. It cannot be processed
+*028   The table/view & has no generated maintenance dialog
+*035   Dictionary interface error: Contact SAP
+*120   Table/view & not found
+*273   Function module call error
+*320   BC Set processing error
+*395   Internal field description read error
+*399   No data record activation information
+*408   Table key not supported by activation links
+*
+* Message class: SV
+*001   The selected function is not supported
+*002   Number of retrieved entries: &
+*004   No entries found that match selection criteria
+*005   One entry chosen
+*006   Number of chosen entries: &
+*007   No previous entry exists
+*008   No next entry exists
+*009   An entry already exists with the same key
+*010   An entry with this key is marked for deletion
+*011   Number of deleted entries: &
+*012   Number of changed entries: &
+*013   Entry deleted
+*014   Number of entries copied: &
+*015   Target key must be different from source key
+*016   Number of reset entries: &
+*017   Entry reset
+*018   Data was saved
+*019   Choose the key from the allowed namespace
+*024   Specify target entries
+*025   Specify target entries
+*026   Select entries before performing the function
+*028   Table & not in DDIC
+*032   Position the cursor on a valid entry
+*033   Specify the key within the work area
+*037   The maintenance dialog for & is incomplete or not defined
+*039   Table & has no relevant fields
+*040   & entries reset, & original and & new entries are still marked
+*041   & entries reset, & original entries are still marked
+*042   & entries reset, & new entries are still marked
+*043   Data already saved
+*044   Read access only
+*045   Enter a start date that is before the end date
+*046   Enter an end date that is after the start date
+*047   Overlapping records are deleted or delimited
+*049   Data locked by user & (display only)
+*050   System error: Unable to lock table/view &
+*051   No data maintenance authorization; display only
+*053   No display authorization for requested data
+*054   Maintenance of data in current client & not permitted
+*055   Address for object & not found
+*056   Mark at least one entry before selecting this function
+*057   The selected entry is new and has no original
+*058   The selected entries are new and have no original
+*059   The selected entry is still in its original state
+*060   The selected entries are still in their original state
+*061   & entries are still originals, & new entries have no original
+*065   No entries exist, double-click for long text
+*066   Select block end
+*084   No values can be displayed
+*092   Change task & is being processed
+*095   System error changing change task &
+*096   Task & was changed
+*098   Entry flagged for inclusion in task &
+*099   Entry was flagged for deletion from task &
+*105   & entries were flagged for inclusion in task &
+*106   & entries were flagged for deletion from task &
+*107   Entry was already in task &
+*108   & entries were already in task &
+*109   & entries included, & entries were contained: &
+*110   Entry was not in task &
+*111   & entries deleted, & entries were not included: &
+*112   & entries were not in task &
+*113   Entry could not be retrieved
+*114   & entries could not be retrieved
+*115   Entry could not be deleted
+*116   & entries could not be deleted
+*117   Do not make any changes (SAP entry)
+*120   Other entries are retrieved and modified if necessary
+*121   Deleted entry will be recovered and possibly changed
+*122   Entry was delimited
+*123   Number of delimited entries: &
+*124   Process delimited entries
+*125   Process delimited entry
+*127   Delimit area of validity
+*128   Delivery class &, transport not possible
+*129   Related objects in various tasks
+*130   Client & is local, transport not permitted
+*132   Object locked for task &1, user &2 only display permitted
+*134   Inconsistency in object definition, only display permitted
+*136   Change with caution, entry belongs to customer
+*138   Check maintenance object &1 or update function group &2
+*139   Address data not applied
+*140   &1 entries deleted; &2 entries added
+*141   Individual entries not added to the change request
+*142   Transport is not possible for the specified data
+*153   No language was chosen
+*160   The installed system code page does not allow any other languages
+*161   Put the cursor on a form name
+*162   The object &1 &2 &3 cannot be put in a request
+*164   Table/view &1 is not in the Dictionary
+*173   Function group &1 inconsistent
+*174   Enter values in work area for non-key fields
+*175   The selected BC Set function is not supported
+*177   Data record contains fix value from BC Set and cannot be deleted
+*183   Error in remote access to central Customizing Distribution system
+*184   Data record contains fixed value from BC Set and cannot be changed
+*202   You are not authorized to change fields with fixed BC Set values
+*306   Table/view & is not active
+*413   & selected entries cannot be deleted
+*538   Dropdown lists are not supported in view clusters
+*757   You have no maintenance authorization for this table key
+*763   You have no maintenance authorization for the displayed data records
+*764   Changed data record selection
+*766   Restricted display of datasets
+*808   Not all columns in the table can be displayed in the list
+*810   View &1 is more than 1000 characters long
+*818   &1 of &2 Business Configuration Set entries imported
+*819   Business Configuration Set imported
+*830   Last selected entry has been reached
+*831   First selected entry has been reached
+*
+* Message class: TB
+*109   No maintenance authorization for cross-client tables (see Help)
+*
+* Message class: TK
+*430   Client &1 has status 'not modifiable'
+*729   Changes to repository objects are not permitted in this client
+*730   Changes to repository or cross-client customizing are not permitted
+*731   Cross-client customizing cannot be modified
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

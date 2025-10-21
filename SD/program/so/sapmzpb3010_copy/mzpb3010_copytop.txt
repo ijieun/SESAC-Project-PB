@@ -1,0 +1,94 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB3010TOP                                       Module Pool      SAPMZPB3010
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb3010.
+
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      icon_ok  TYPE icons-text,
+      icon_nk  TYPE icons-text,
+      icon_n1  TYPE icons-text,
+      icon_n2  TYPE icons-text,
+      icon_n3  TYPE icons-text.
+
+DATA: gv_sokey TYPE ztpbsoh-sonum.
+
+" Types
+TYPES: ty_orddt_range TYPE RANGE OF ztpbsoh-orddt.
+TYPES: ty_sonum_range TYPE RANGE OF ztpbsoh-sonum.
+
+
+" header 조회
+*DATA: gt_data TYPE TABLE OF zspb1006,
+*      gs_data LIKE LINE OF gt_data.
+
+DATA: BEGIN OF gs_data,
+        row_col(4).
+    INCLUDE TYPE zspb1006.
+DATA: END OF gs_data,
+gt_data LIKE TABLE OF gs_data.
+
+" item 조회
+DATA: BEGIN OF gs_stock.
+    INCLUDE STRUCTURE zspb1025.
+DATA: it_col TYPE lvc_t_scol,
+      END OF gs_stock,
+      gt_stock LIKE TABLE OF gs_stock.
+DATA gs_col LIKE LINE OF gs_stock-it_col.
+
+
+" 예약 아이템
+DATA: BEGIN OF gs_rcvitem,
+        sonum TYPE ztpbsoh-sonum,
+        pronr TYPE ztpbsoi-pronr,
+        plant TYPE ztpbsoi-plant,
+        lgort TYPE ztpbsoi-lgort,
+        soqty TYPE ztpbsoi-soqty,
+      END OF gs_rcvitem,
+      gt_rcvitem LIKE TABLE OF gs_rcvitem.
+
+" Condition
+TABLES zspb1004."판매오더 헤더 검색
+
+" Info
+TABLES zspb1006. "판매오더
+TABLES zspb1025. "재고
+
+
+* Domain Fixed Value
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+
+" ALV Components
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+" ALV Components - Item
+DATA: go_con_stock  TYPE REF TO cl_gui_custom_container,
+      go_alv_stock  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_stock TYPE lvc_s_layo,
+      gt_fcat_stock TYPE lvc_t_fcat,
+      gs_fcat_stock LIKE LINE OF gt_fcat_stock,
+      gt_sort_stock TYPE lvc_t_sort,
+      gs_sort_stock LIKE LINE OF gt_sort_stock.
+
+
+" Handler
+CLASS lcl_event_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS:
+      handler_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING e_row_id  e_column_id es_row_no.
+ENDCLASS.
+DATA go_handler TYPE REF TO lcl_event_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

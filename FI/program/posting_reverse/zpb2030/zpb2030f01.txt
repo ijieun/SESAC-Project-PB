@@ -1,0 +1,1132 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPB2030F01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data_no_j .
+
+  DATA: lv_limit  TYPE i,
+        lv_remain TYPE i,
+        lv_count  TYPE i.
+
+  lv_limit = pa_max.
+
+  " 송장 문서
+  SELECT a~invno AS refdo
+         a~cusnr
+         a~vendr
+         a~ponum AS reldo_a
+         a~sonum AS reldo_b
+         a~pdate AS cdate
+    FROM ztpbinvh AS a
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    UP TO lv_limit ROWS
+    WHERE iflag = 'X'
+    AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh AS b
+       WHERE b~refdo = a~invno
+    ).
+
+  DESCRIBE TABLE gt_data LINES lv_count.
+  IF lv_count GE lv_limit.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  LOOP AT gt_data INTO gs_data.
+
+    IF gs_data-reldo_a IS INITIAL AND gs_data-reldo_b IS NOT INITIAL.
+      gs_data-reldo_a = gs_data-reldo_b.
+      CLEAR gs_data-reldo_b.
+    ENDIF.
+
+    IF gs_data-reldo_a(2) EQ 'PO'.
+
+      SELECT SINGLE grnum
+        FROM ztpbgrh
+        INTO gs_data-reldo_b
+        WHERE ponum = gs_data-reldo_a.
+
+    ELSE.
+
+      SELECT SINGLE ginum
+        FROM ztpbgih
+        INTO gs_data-reldo_b
+        WHERE sonum = gs_data-reldo_a.
+
+    ENDIF.
+
+    IF gs_data-cusnr IS NOT INITIAL.
+      gs_data-comnr = gs_data-cusnr.
+    ELSE.
+      gs_data-comnr = gs_data-vendr.
+    ENDIF.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+  " 입고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~grnum AS refdo
+           a~vendr AS comnr
+           a~ponum AS reldo_a
+           a~stdat AS cdate
+      FROM ztpbgrh AS a
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE pstat = 'C'
+      AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh AS b
+       WHERE b~refdo = a~grnum
+    ).
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  " 출고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~ginum AS refdo
+           a~cusnr AS comnr
+           a~sonum AS reldo_a
+           a~pgidt AS cdate
+      FROM ztpbgih AS a
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE stats = 'C'
+      AND NOT EXISTS (
+      SELECT refdo
+        FROM ztpbjonlh AS b
+       WHERE b~refdo = a~ginum
+    ).
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  PERFORM get_extra_data.
+
+  SORT gt_data BY cdate DESCENDING.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_ALV_0100
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_alv_0100 .
+
+  IF go_grid IS INITIAL.
+
+    PERFORM: create_grid,
+
+             set_layo,
+             set_fcat,
+             set_sort,
+
+             display_alv.
+
+  ELSE.
+    CALL METHOD go_grid->refresh_table_display.
+  ENDIF.
+
+  SET HANDLER go_handler->handle_hotspot_click FOR go_grid ACTIVATION 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CREATE_GRID
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_GO_GRID  text
+*----------------------------------------------------------------------*
+FORM create_grid.
+
+  CREATE OBJECT go_dock
+    EXPORTING
+*     parent                      =
+      repid                       = sy-repid
+      dynnr                       = sy-dynnr
+      side                        = cl_gui_docking_container=>dock_at_top
+*     side                        = cl_gui_docking_container=>dock_at_bottom
+      extension                   = 1000
+*     style                       =
+*     lifetime                    = lifetime_default
+*     caption                     =
+*     metric                      = 0
+*     ratio                       =
+*     no_autodef_progid_dynnr     =
+*     name                        =
+    EXCEPTIONS
+      cntl_error                  = 1
+      cntl_system_error           = 2
+      create_error                = 3
+      lifetime_error              = 4
+      lifetime_dynpro_dynpro_link = 5
+      OTHERS                      = 6.
+  IF sy-subrc <> 0.
+    "& Object Exceptions
+    MESSAGE a000(zmcpb) WITH 'CL_GUI_DOCKING_CONTAINER'.
+  ENDIF.
+
+  CREATE OBJECT go_grid
+    EXPORTING
+      i_parent = go_dock.
+
+  IF sy-subrc <> 0.
+*   MESSAGE ID SY-MSGID TYPE SY-MSGTY NUMBER SY-MSGNO
+*              WITH SY-MSGV1 SY-MSGV2 SY-MSGV3 SY-MSGV4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_LAYO
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_layo .
+
+  gs_layo-cwidth_opt = 'A'.
+  gs_layo-zebra = 'X'.
+  gs_layo-ctab_fname = 'CEL_COL'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_FCAT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_fcat .
+
+  DATA ls_fcat TYPE lvc_s_fcat.
+
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = 'ZSPB3100'
+    CHANGING
+      ct_fieldcat      = gt_fcat.
+
+  LOOP AT gt_fcat INTO ls_fcat.
+
+    CASE ls_fcat-fieldname.
+      WHEN 'REFDO'.
+        ls_fcat-emphasize = 'C410'.
+        ls_fcat-hotspot = 'X'.
+      WHEN 'RELDO_A'.
+        ls_fcat-emphasize = 'C300'.
+        ls_fcat-hotspot = 'X'.
+        ls_fcat-coltext = '연관문서1'.
+      WHEN 'RELDO_B'.
+        ls_fcat-emphasize = 'C500'.
+        ls_fcat-hotspot = 'X'.
+        ls_fcat-coltext = '연관문서2'.
+
+      WHEN 'CUSNR'.
+        ls_fcat-no_out = 'X'.
+      WHEN 'VENDR'.
+        ls_fcat-no_out = 'X'.
+
+      WHEN OTHERS.
+    ENDCASE.
+
+    MODIFY gt_fcat FROM ls_fcat.
+    CLEAR ls_fcat.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  SET_SORT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM set_sort .
+
+  FIELD-SYMBOLS <fs_sort> TYPE lvc_s_sort.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'CDATE'.
+  <fs_sort>-down = 'X'.
+
+  APPEND INITIAL LINE TO gt_sort ASSIGNING <fs_sort>.
+  <fs_sort>-fieldname = 'JOCUM'.
+  <fs_sort>-up = 'X'.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  DISPLAY_ALV
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM display_alv .
+
+  CALL METHOD go_grid->set_table_for_first_display
+    EXPORTING
+*     i_buffer_active =
+*     i_bypassing_buffer            =
+*     i_consistency_check           =
+*     i_structure_name              =
+*     is_variant      =
+*     i_save          =
+*     i_default       = 'X'
+      is_layout       = gs_layo
+*     is_print        =
+*     it_special_groups             =
+*     it_toolbar_excluding          =
+*     it_hyperlink    =
+*     it_alv_graphics =
+*     it_except_qinfo =
+*     ir_salv_adapter =
+    CHANGING
+      it_outtab       = gt_data
+      it_fieldcatalog = gt_fcat
+      it_sort         = gt_sort
+*     it_filter       =
+*    EXCEPTIONS
+*     invalid_parameter_combination = 1
+*     program_error   = 2
+*     too_many_lines  = 3
+*     others          = 4
+    .
+  IF sy-subrc <> 0.
+*   Implement suitable error handling here
+  ENDIF.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_EXTRA_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_extra_data .
+
+  SELECT cusnr
+         custt
+    FROM ztpbcustom
+    INTO CORRESPONDING FIELDS OF TABLE gt_custom.
+
+  SELECT vendr
+         vendt
+    FROM ztpbvendor
+    INTO CORRESPONDING FIELDS OF TABLE gt_vendor.
+
+  SELECT refdo
+    FROM ztpbjonlh
+    INTO CORRESPONDING FIELDS OF TABLE gt_jonl.
+
+  DATA: ls_custom LIKE LINE OF gt_custom,
+        ls_vendor LIKE LINE OF gt_vendor.
+
+  LOOP AT gt_data INTO gs_data.
+
+    gs_data-dtype = gs_data-refdo(2).
+
+    READ TABLE gt_custom WITH KEY cusnr = gs_data-comnr INTO ls_custom.
+    IF sy-subrc = 0.
+      gs_data-compt = ls_custom-custt.
+    ELSE.
+      READ TABLE gt_vendor WITH KEY vendr = gs_data-comnr INTO ls_vendor.
+      gs_data-compt = ls_vendor-vendt.
+    ENDIF.
+
+    READ TABLE gt_jonl WITH KEY refdo = gs_data-refdo TRANSPORTING NO FIELDS.
+    IF sy-subrc <> 0.
+      gs_data-jchck = 'N'.
+    ELSE.
+      gs_data-jchck = 'Y'.
+    ENDIF.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA_J
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data_j .
+
+  DATA: lv_limit  TYPE i,
+        lv_remain TYPE i,
+        lv_count  TYPE i.
+
+  lv_limit = pa_max.
+
+  " 송장 문서
+  SELECT a~invno AS refdo
+         a~cusnr
+         a~vendr
+         a~ponum AS reldo_a
+         a~sonum AS reldo_b
+         a~pdate AS cdate
+         b~jocum
+    FROM ztpbinvh AS a INNER JOIN ztpbjonlh AS b ON a~invno = b~refdo
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    UP TO lv_limit ROWS
+    WHERE iflag = 'X'.
+
+  DESCRIBE TABLE gt_data LINES lv_count.
+  IF lv_count GE lv_limit.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  LOOP AT gt_data INTO gs_data.
+
+    IF gs_data-reldo_a IS INITIAL AND gs_data-reldo_b IS NOT INITIAL.
+      gs_data-reldo_a = gs_data-reldo_b.
+      CLEAR gs_data-reldo_b.
+    ENDIF.
+
+    IF gs_data-reldo_a(2) EQ 'PO'.
+
+      SELECT SINGLE grnum
+        FROM ztpbgrh
+        INTO gs_data-reldo_b
+        WHERE ponum = gs_data-reldo_a.
+
+    ELSE.
+
+      SELECT SINGLE ginum
+        FROM ztpbgih
+        INTO gs_data-reldo_b
+        WHERE sonum = gs_data-reldo_a.
+
+    ENDIF.
+
+    IF gs_data-cusnr IS NOT INITIAL.
+      gs_data-comnr = gs_data-cusnr.
+    ELSE.
+      gs_data-comnr = gs_data-vendr.
+    ENDIF.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+  " 입고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~grnum AS refdo
+           a~vendr AS comnr
+           a~ponum AS reldo_a
+           a~stdat AS cdate
+           b~jocum
+      FROM ztpbgrh AS a INNER JOIN ztpbjonlh AS b ON a~grnum = b~refdo
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE pstat = 'C'.
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  " 출고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~ginum AS refdo
+           a~cusnr AS comnr
+           a~sonum AS reldo_a
+           a~pgidt AS cdate
+           b~jocum
+      FROM ztpbgih AS a INNER JOIN ztpbjonlh AS b ON a~ginum = b~refdo
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE stats = 'C'.
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  PERFORM get_extra_data.
+
+  SORT gt_data BY cdate DESCENDING.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_DATA_ALL_J
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM get_data_all_j .
+
+  DATA: lv_limit  TYPE i,
+        lv_remain TYPE i,
+        lv_count  TYPE i.
+
+  lv_limit = pa_max.
+
+  " 송장 문서
+  SELECT a~invno AS refdo
+         a~cusnr
+         a~vendr
+         a~ponum AS reldo_a
+         a~sonum AS reldo_b
+         a~pdate AS cdate
+         b~jocum
+    FROM ztpbinvh AS a LEFT OUTER JOIN ztpbjonlh AS b ON a~invno = b~refdo
+    INTO CORRESPONDING FIELDS OF TABLE gt_data
+    UP TO lv_limit ROWS
+    WHERE iflag = 'X'.
+
+  DESCRIBE TABLE gt_data LINES lv_count.
+  IF lv_count GE lv_limit.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  LOOP AT gt_data INTO gs_data.
+
+    IF gs_data-reldo_a IS INITIAL AND gs_data-reldo_b IS NOT INITIAL.
+      gs_data-reldo_a = gs_data-reldo_b.
+      CLEAR gs_data-reldo_b.
+    ENDIF.
+
+    IF gs_data-reldo_a(2) EQ 'PO'.
+
+      SELECT SINGLE grnum
+        FROM ztpbgrh
+        INTO gs_data-reldo_b
+        WHERE ponum = gs_data-reldo_a.
+
+    ELSE.
+
+      SELECT SINGLE ginum
+        FROM ztpbgih
+        INTO gs_data-reldo_b
+        WHERE sonum = gs_data-reldo_a.
+
+    ENDIF.
+
+    IF gs_data-cusnr IS NOT INITIAL.
+      gs_data-comnr = gs_data-cusnr.
+    ELSE.
+      gs_data-comnr = gs_data-vendr.
+    ENDIF.
+
+    MODIFY gt_data FROM gs_data.
+    CLEAR gs_data.
+
+  ENDLOOP.
+
+  " 입고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~grnum AS refdo
+           a~vendr AS comnr
+           a~ponum AS reldo_a
+           a~stdat AS cdate
+           b~jocum
+      FROM ztpbgrh AS a LEFT OUTER JOIN ztpbjonlh AS b ON a~grnum = b~refdo
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE pstat = 'C'.
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  " 출고 문서
+  DESCRIBE TABLE gt_data LINES lv_count.
+
+  IF lv_count < lv_limit.
+
+    lv_remain = lv_limit - lv_count.
+
+    SELECT a~ginum AS refdo
+           a~cusnr AS comnr
+           a~sonum AS reldo_a
+           a~pgidt AS cdate
+           b~jocum
+      FROM ztpbgih AS a LEFT OUTER JOIN ztpbjonlh AS b ON a~ginum = b~refdo
+      APPENDING CORRESPONDING FIELDS OF TABLE gt_data
+      UP TO lv_remain ROWS
+      WHERE stats = 'C'.
+
+  ELSE.
+    MESSAGE s000(zmcpb) WITH 'Selection restricted to' lv_limit 'hits'. " & & & &
+  ENDIF.
+
+  PERFORM get_extra_data.
+
+  SORT gt_data BY cdate DESCENDING.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_CONDS
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM check_conds .
+
+  DELETE gt_data WHERE cdate NOT IN so_pdate.
+  DELETE gt_data WHERE refdo(2) NOT IN so_dtype.
+  DELETE gt_data WHERE refdo NOT IN so_invno.
+  DELETE gt_data WHERE refdo NOT IN so_grnum.
+  DELETE gt_data WHERE refdo NOT IN so_ginum.
+
+  IF so_cusnr IS NOT INITIAL.
+    IF so_vendr IS NOT INITIAL.
+      DELETE gt_data WHERE ( comnr(1) = 'C' AND comnr NOT IN so_cusnr )
+                        OR ( comnr(1) = 'V' AND comnr NOT IN so_vendr ).
+    ELSEIF so_vendr IS INITIAL.
+      DELETE gt_data WHERE comnr NOT IN so_cusnr OR comnr(1) = 'V'.
+    ENDIF.
+  ELSEIF so_cusnr IS INITIAL.
+    IF so_vendr IS NOT INITIAL.
+      DELETE gt_data WHERE comnr NOT IN so_vendr OR comnr(1) = 'C'.
+    ENDIF.
+  ENDIF.
+
+* --- a 그룹: 구매오더(rpono), 판매오더(rsono) ---
+  IF so_rpono IS NOT INITIAL OR so_rsono IS NOT INITIAL.
+
+    IF so_rpono IS NOT INITIAL AND so_rsono IS NOT INITIAL.
+      " Case 1: rpono와 rsono 모두 입력됨 (OR 필터링)
+      " 둘 다에 해당하지 않으면 삭제 (하나라도 해당하면 남김)
+      DELETE gt_data WHERE reldo_a NOT IN so_rpono AND
+                          reldo_a NOT IN so_rsono.
+
+    ELSEIF so_rpono IS NOT INITIAL.
+      " Case 2: rpono만 입력됨
+      DELETE gt_data WHERE reldo_a NOT IN so_rpono.
+
+    ELSEIF so_rsono IS NOT INITIAL.
+      " Case 3: rsono만 입력됨
+      DELETE gt_data WHERE reldo_a NOT IN so_rsono.
+
+    ENDIF.
+  ENDIF.
+
+* ----------------------------------------------------------------------
+* --- B 그룹: 입고번호(rgrno), 출고번호(rgino) ---
+* 이 그룹은 A 그룹의 필터링이 끝난 후, reldo_b 필드에 대해 추가적으로 필터링합니다.
+
+  IF so_rgrno IS NOT INITIAL OR so_rgino IS NOT INITIAL.
+
+    IF so_rgrno IS NOT INITIAL AND so_rgino IS NOT INITIAL.
+      " Case 4: rgrno와 rgino 모두 입력됨 (OR 필터링)
+      DELETE gt_data WHERE reldo_b NOT IN so_rgrno AND
+                          reldo_b NOT IN so_rgino.
+
+    ELSEIF so_rgrno IS NOT INITIAL.
+      " Case 5: rgrno만 입력됨
+      DELETE gt_data WHERE reldo_b NOT IN so_rgrno.
+
+    ELSEIF so_rgino IS NOT INITIAL.
+      " Case 6: rgino만 입력됨
+      DELETE gt_data WHERE reldo_b NOT IN so_rgino.
+
+    ENDIF.
+  ENDIF.
+
+*  IF so_rpono IS NOT INITIAL AND so_rsono IS NOT INITIAL.
+*    DELETE gt_data WHERE reldo_a NOT IN so_rpono AND reldo_a NOT IN so_rsono.
+*  ELSEIF so_rpono IS NOT INITIAL AND so_rsono IS INITIAL.
+*    DELETE gt_data WHERE reldo_a NOT IN so_rpono.
+*  ELSEIF so_rpono IS INITIAL AND so_rsono IS NOT INITIAL.
+*    DELETE gt_data WHERE reldo_a NOT IN so_rsono.
+*  ENDIF.
+*
+*  IF so_rgrno IS NOT INITIAL OR so_rgino IS NOT INITIAL.
+*    DELETE gt_data WHERE reldo_b NOT IN so_rgrno AND reldo_b NOT IN so_rgino.
+*  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BDC
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM bdc .
+
+  LOOP AT gt_data INTO gs_data.
+
+    PERFORM insert_header.
+    PERFORM insert_item1.
+    PERFORM insert_item2.
+
+  ENDLOOP.
+
+  MESSAGE s000(zmcpb) WITH '모든 문서의 전표가 생성되었습니다.'(c02). " & & & &
+  LEAVE TO SCREEN 0.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  GET_NUMBER_RANGE
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      <--P_LV_NUMR  text
+*----------------------------------------------------------------------*
+FORM get_number_range  CHANGING cv_numr.
+
+  CALL FUNCTION 'NUMBER_GET_NEXT'
+    EXPORTING
+      nr_range_nr             = '01'
+      object                  = 'ZNRPB3003'
+    IMPORTING
+      number                  = cv_numr
+    EXCEPTIONS
+      interval_not_found      = 1
+      number_range_not_intern = 2
+      object_not_found        = 3
+      quantity_is_0           = 4
+      quantity_is_not_1       = 5
+      interval_overflow       = 6
+      buffer_overflow         = 7
+      OTHERS                  = 8.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  cv_numr = 'J' && cv_numr.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  CHECK_JOCUM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_LV_NUMR  text
+*      <--P_GV_SUBRC  text
+*----------------------------------------------------------------------*
+FORM check_jocum  USING    VALUE(p_jocum)
+                  CHANGING cv_subrc.
+
+  CLEAR cv_subrc.
+
+  DATA lv_jocum.
+
+  SELECT SINGLE jocum
+    FROM ztpbjonlh
+    INTO lv_jocum
+    WHERE jocum = p_jocum.
+
+  IF sy-subrc = 0.
+    cv_subrc = 4.
+  ENDIF.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_HEADER
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM insert_header .
+
+  DATA: lv_numr   TYPE c LENGTH 10,
+        ls_header TYPE ztpbjonlh.
+
+  " 전표 번호 채번
+  PERFORM get_number_range CHANGING lv_numr.
+
+  PERFORM check_jocum USING    lv_numr
+                      CHANGING gv_subrc.
+
+  IF gv_subrc <> 0.
+    MESSAGE e006(zmcpb) WITH lv_numr '전표번호'(c11). " & 이미 존재하는 & 입니다.
+    RETURN.
+  ENDIF.
+
+  " 전표번호 ( 아이템 테이블까지 )
+  zspb3005-jocum = lv_numr.
+  zspb3006-jocum = lv_numr.
+
+  " 전표유형&증빙일자
+  CASE gs_data-dtype.
+    WHEN 'IV'.
+
+      READ TABLE gt_custom WITH KEY cusnr = gs_data-cusnr TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
+        zspb3005-jtype = 'WE'.
+      ELSE.
+        zspb3005-jtype = 'DR'.
+      ENDIF.
+
+      SELECT SINGLE pdate
+        FROM ztpbinvh
+        INTO zspb3005-tdate
+        WHERE invno = gs_data-refdo.
+
+    WHEN 'GR'.
+
+      zspb3005-jtype = 'KZ'.
+
+      SELECT SINGLE stdat
+        FROM ztpbgrh
+        INTO zspb3005-tdate
+        WHERE grnum = gs_data-refdo.
+
+    WHEN 'GI'.
+
+      zspb3005-jtype = 'DZ'.
+
+      SELECT SINGLE pgidt
+        FROM ztpbgih
+        INTO zspb3005-tdate
+        WHERE ginum = gs_data-refdo.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  " 회계연도&기간
+  zspb3005-fyear = sy-datum(4).
+  zspb3005-fperi = sy-datum+4(2).
+
+  " 전기일자
+  zspb3005-pdate = sy-datum.
+
+  " 참조문서&타입
+  zspb3005-dtype = gs_data-dtype.
+  zspb3005-refdo = gs_data-refdo.
+
+  " 통화단위
+  zspb3005-waers = 'KRW'.
+
+  " 헤더 데이터 입력
+  MOVE-CORRESPONDING zspb3005 TO ls_header.
+  INSERT ztpbjonlh FROM ls_header.
+  CLEAR ls_header.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_ITEM
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM insert_item1 .
+
+  DATA: ls_item TYPE ztpbjonli.
+
+  " 전표번호는 헤더 부분에서 이미 입력 완료
+
+  " 아이템 번호
+  zspb3006-itnum = 1.
+
+  " 전기키&대차구분
+  zspb3006-pokey = '40'. " 총계정원장 차변
+  zspb3006-dbcrf = 'S'.
+
+  DATA: BEGIN OF ls_cal_price,
+          poqty  TYPE i,
+          pgrqt  TYPE i,
+          pgiqt  TYPE i,
+          price  TYPE ztpbinvi-price,
+          tprice TYPE ztpbinvi-price,
+        END OF ls_cal_price,
+        lt_cal_price LIKE TABLE OF ls_cal_price.
+  " 계정과목&금액
+  CASE zspb3005-refdo(2).
+    WHEN 'IV'.
+
+      DATA lv_ponum TYPE ztpbpoh-ponum.
+
+      SELECT SINGLE ponum
+        FROM ztpbinvh
+        INTO lv_ponum
+        WHERE invno = zspb3005-refdo.
+
+      IF lv_ponum IS INITIAL.
+        zspb3006-glacc = 10000001. " 매출채권
+      ELSE.
+        zspb3006-glacc = 20000004. " GR/IR Clearing(상품)
+      ENDIF.
+
+      SELECT poqty
+             price
+        FROM ztpbinvi
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE invno = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-poqty * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN 'GR'.
+
+      zspb3006-glacc = 20000006. " 외상매입금
+
+      SELECT pgrqt
+             price
+        FROM ztpbgri
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE grnum = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-pgrqt * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN 'GI'.
+
+      zspb3006-glacc = 10000004. " 보통예금
+
+      SELECT pgiqt
+             price
+        FROM ztpbgii
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE pgino = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-pgiqt * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  " 통화단위
+  zspb3006-waers = 'KRW'.
+
+  " 아이템 데이터 입력
+  MOVE-CORRESPONDING zspb3006 TO ls_item.
+  INSERT ztpbjonli FROM ls_item.
+  CLEAR ls_item.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  INSERT_ITEM2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM insert_item2 .
+
+  DATA: ls_item TYPE ztpbjonli.
+
+  " 전표번호는 헤더 부분에서 이미 입력 완료
+
+  " 아이템 번호
+  zspb3006-itnum = 2.
+
+  " 전기키&대차구분
+  zspb3006-pokey = '50'. " 총계정원장 대변
+  zspb3006-dbcrf = 'H'.
+
+  DATA: BEGIN OF ls_cal_price,
+          poqty  TYPE i,
+          pgrqt  TYPE i,
+          pgiqt  TYPE i,
+          price  TYPE ztpbinvi-price,
+          tprice TYPE ztpbinvi-price,
+        END OF ls_cal_price,
+        lt_cal_price LIKE TABLE OF ls_cal_price.
+  " 계정과목&금액
+  CASE zspb3005-refdo(2).
+    WHEN 'IV'.
+
+      DATA lv_ponum TYPE ztpbpoh-ponum.
+
+      SELECT SINGLE ponum
+        FROM ztpbinvh
+        INTO lv_ponum
+        WHERE invno = zspb3005-refdo.
+
+      IF lv_ponum IS INITIAL.
+        zspb3006-glacc = 40000000. " 매출액
+      ELSE.
+        zspb3006-glacc = 20000006. " 외상매입금
+      ENDIF.
+
+      SELECT poqty
+             price
+        FROM ztpbinvi
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE invno = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-poqty * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN 'GR'.
+
+      zspb3006-glacc = 10000004. " 보통예금
+
+      SELECT pgrqt
+             price
+        FROM ztpbgri
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE grnum = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-pgrqt * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN 'GI'.
+
+      zspb3006-glacc = 10000001. " 매출채권
+
+      SELECT pgiqt
+             price
+        FROM ztpbgii
+        INTO CORRESPONDING FIELDS OF TABLE lt_cal_price
+        WHERE pgino = zspb3005-refdo.
+
+      LOOP AT lt_cal_price INTO ls_cal_price.
+
+        ls_cal_price-tprice = ls_cal_price-tprice + ( ls_cal_price-pgiqt * ls_cal_price-price ).
+
+      ENDLOOP.
+
+      zspb3006-price = ls_cal_price-tprice.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+  " 통화단위
+  zspb3006-waers = 'KRW'.
+
+  " 아이템 데이터 입력
+  MOVE-CORRESPONDING zspb3006 TO ls_item.
+  INSERT ztpbjonli FROM ls_item.
+  CLEAR ls_item.
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  F4_NAME
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_SO_REL_A_LOW  text
+*----------------------------------------------------------------------*
+FORM f4_name_a USING po_rel_a_low.
+
+  DATA : BEGIN OF ls_poson,
+           donum TYPE zepb_reldo,
+           comnr TYPE zepb_comnr,
+           compt TYPE zepb_compt,
+           psdat TYPE sy-datum,
+           pstat TYPE zepb_pstat,
+           stats TYPE zepb_sstat,
+           descr TYPE zepb_descr,
+         END OF ls_poson,
+         lt_poson LIKE TABLE OF ls_poson.
+
+  SELECT ponum AS donum
+         vendr AS comnr
+         podat AS psdat
+         pstat
+         descr
+    FROM ztpbpoh
+    INTO CORRESPONDING FIELDS OF TABLE lt_poson.
+
+  SELECT sonum AS donum
+         cusnr AS comnr
+         orddt AS psdat
+         stats
+         descr
+    FROM ztpbsoh
+    APPENDING CORRESPONDING FIELDS OF TABLE lt_poson.
+
+  SORT lt_poson BY donum ASCENDING.
+
+  CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
+    EXPORTING
+      retfield        = 'DONUM'
+      dynpprog        = sy-repid
+      dynpnr          = sy-dynnr
+      dynprofield     = po_rel_a_low
+      window_title    = TEXT-s01
+      value_org       = 'S'
+    TABLES
+      value_tab       = lt_poson
+    EXCEPTIONS
+      parameter_error = 1
+      no_values_found = 2
+      OTHERS          = 3.
+
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

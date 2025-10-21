@@ -1,0 +1,43 @@
+*&---------------------------------------------------------------------*
+*& Module Pool       SAPMZPB4050
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+
+INCLUDE mzpb4050_copytop.
+*INCLUDE mzpb4050top                             .    " global Data
+
+INCLUDE mzpb4050_copyo01.
+*INCLUDE mzpb4050o01                             .  " PBO-Modules
+INCLUDE mzpb4050_copyi01.
+*INCLUDE mzpb4050i01                             .  " PAI-Modules
+INCLUDE mzpb4050_copyf01.
+*INCLUDE mzpb4050f01                             .  " FORM-Routines
+INCLUDE mzpb4050_copyc01.
+*INCLUDE mzpb4050c01                             .  " Class
+
+LOAD-OF-PROGRAM.
+
+  PERFORM set_default.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+* T103 --> &
+* T200 --> &
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*003   & 할 &을(를) 선택하세요.
+*004   한 건만 & 가능합니다.
+*008   & 정보가 없습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

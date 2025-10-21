@@ -1,0 +1,181 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB4010O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_TS_INFO_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_ts_info_0100 OUTPUT.
+  CASE mytab-activetab. "탭스트립(또는 유사 컨트롤)의 현재 활성 탭 값에 따라
+    WHEN 'TAB1'.
+      gv_dynnr = '0101'.
+    WHEN 'TAB2'.
+      gv_dynnr = '0102'.
+    WHEN OTHERS.
+      " default tab
+      mytab-activetab = 'TAB1'. "활성 탭 값이 없으면 기본값 할당 TAB2로~
+      gv_dynnr = '0102'.
+  ENDCASE.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0101 OUTPUT.
+  IF go_con IS INITIAL.
+    PERFORM create_alv USING 'CON' go_con go_alv.
+
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->on_double_click FOR go_alv ACTIVATION 'X'.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->handler_hotspot_click FOR go_alv ACTIVATION 'X'.
+
+    PERFORM get_so_list CHANGING gv_subrc.
+    PERFORM set_sort USING 'X' CHANGING gt_sort.
+    PERFORM set_alv_layout USING 'X'
+                         CHANGING gs_layo.
+    PERFORM set_fcat USING 'X'.
+    PERFORM display_alv USING go_alv 'ZSPB1006'
+                        CHANGING gs_layo gt_data gt_fcat gt_sort.
+  ELSE.
+    PERFORM refresh_alv USING go_alv.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ICON  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_icon OUTPUT.
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_LED_RED'
+    IMPORTING
+      result = icon_o.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_LED_GREEN'
+    IMPORTING
+      result = icon_c.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_TRANSPORT'
+    IMPORTING
+      result = icon_d.
+
+  CALL FUNCTION 'ICON_CREATE'
+    EXPORTING
+      name   = 'ICON_TRANSPORT'
+    IMPORTING
+      result = icon_p.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0102  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0102 OUTPUT.
+  IF go_con_gih IS INITIAL.
+    PERFORM create_alv USING 'CON_GI' go_con_gih go_alv_gih.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->handler_hotspot_click FOR go_alv_gih ACTIVATION 'X'.
+    PERFORM get_gi_list CHANGING gv_subrc.
+    PERFORM set_sort USING 'A' CHANGING gt_sort_gih.
+    PERFORM set_alv_layout USING 'A'
+                         CHANGING gs_layo_gih.
+    PERFORM set_fcat USING 'A'.
+    PERFORM display_alv USING go_alv_gih 'ZSPB1017'
+                        CHANGING gs_layo_gih gt_gih gt_fcat_gih gt_sort_gih.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_gih.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0200 OUTPUT.
+  SET PF-STATUS 'S200'.
+  SET TITLEBAR 'T200'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_DEFAULT_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_default_0200 OUTPUT.
+  IF gv_gikey IS INITIAL.
+    GET PARAMETER ID 'ZPB4010D' FIELD gv_gikey.
+    PERFORM get_gi_detail_info CHANGING gv_subrc.
+    IF gv_subrc IS NOT INITIAL.
+      MESSAGE i001(zmcpb).
+    ENDIF.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0200 OUTPUT.
+  IF go_con_gii IS INITIAL.
+    PERFORM create_alv USING 'CON_GI_ITEM' go_con_gii go_alv_gii.
+    CREATE OBJECT go_handler.
+    SET HANDLER go_handler->handler_hotspot_click FOR go_alv_gii ACTIVATION 'X'.
+    PERFORM get_gi_detail_info CHANGING gv_subrc.
+    PERFORM set_alv_layout USING 'B'
+                       CHANGING gs_layo_gii.
+    PERFORM set_fcat USING 'B'.
+    PERFORM display_alv USING go_alv_gii 'ZSPB1018'
+                        CHANGING gs_layo_gii gt_gii gt_fcat_gii gt_sort_gii.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_gii.
+  ENDIF.
+
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0103  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0103 OUTPUT.
+  SET PF-STATUS 'S103'.
+  SET TITLEBAR 'T103'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0103  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_alv_0103 OUTPUT.
+  IF go_con_soi IS INITIAL.
+    PERFORM create_alv USING 'CON_SO_ITEM' go_con_soi go_alv_soi.
+    PERFORM set_alv_layout USING 'C'
+                       CHANGING gs_layo_soi.
+    PERFORM set_fcat USING 'C'.
+    PERFORM display_alv USING go_alv_soi 'ZSPB1023'
+                        CHANGING gs_layo_soi gt_temp gt_fcat_soi gt_sort_soi.
+  ELSE.
+    PERFORM refresh_alv USING go_alv_soi.
+  ENDIF.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

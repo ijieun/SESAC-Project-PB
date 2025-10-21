@@ -1,0 +1,83 @@
+*&---------------------------------------------------------------------*
+*& Report  ZPB2030
+*&
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*& 기간 / 상품 / 회사별 전표 생성 가능한 문서들(IV, GR, GI) 일괄 조회
+*&---------------------------------------------------------------------*
+
+INCLUDE zpb2030top. " Global Data
+INCLUDE zpb2030c01. " Class Implementation
+INCLUDE zpb2030o01. " PBO-Modules
+INCLUDE zpb2030i01. " PAI-Modules
+INCLUDE zpb2030f01. " FORM-Routines
+
+INITIALIZATION.
+
+AT SELECTION-SCREEN OUTPUT.
+
+AT SELECTION-SCREEN.
+
+START-OF-SELECTION.
+
+  IF pa_ra1 = 'X'.
+    PERFORM get_data_no_j.
+  ELSEIF pa_ra2 = 'X'.
+    PERFORM get_data_j.
+  ELSEIF pa_ra3 = 'X'.
+    PERFORM get_data_all_j.
+  ENDIF.
+
+  PERFORM check_conds.
+
+  IF gt_data IS NOT INITIAL.
+    CALL SCREEN 100.
+  ELSE.
+    MESSAGE s008(zmcpb) WITH '해당하는 데이터'(c03). " & 정보가 없습니다.
+  ENDIF.
+
+*GUI Texts
+*----------------------------------------------------------
+* T100 --> &
+* T101 --> &
+
+*Text elements
+*----------------------------------------------------------
+* C01 조회 결과
+* C02 모든 문서의 전표가 생성되었습니다.
+* C03 해당하는 데이터
+* S01 PO / SO
+* T01 전표 생성 여부
+* T02 참조문서 검색 조건
+* T03 연관문서 검색 조건
+* T04 전표 미생성
+* T05 전표 생성
+* T06 통합 조회
+
+
+*Selection texts
+*----------------------------------------------------------
+* PA_MAX         최대 데이터 수
+* SO_CUSNR D       .
+* SO_DTYPE D       .
+* SO_GINUM D       .
+* SO_GRNUM D       .
+* SO_INVNO D       .
+* SO_PDATE         문서생성일
+* SO_RGINO D       .
+* SO_RGRNO D       .
+* SO_RPONO D       .
+* SO_RSONO D       .
+* SO_VENDR D       .
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: ZMCPB
+*000   & & & &
+*006   & 이미 존재하는 & 입니다.
+*008   & 정보가 없습니다.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

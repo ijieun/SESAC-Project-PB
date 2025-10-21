@@ -1,0 +1,171 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1060I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      CLEAR: gv_subrc, gr_pernr[].
+      PERFORM set_pernr_range CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        CLEAR gt_list.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM select_emp_list.
+      PERFORM set_emp_full_name.
+      PERFORM get_gesch_text.
+
+    WHEN 'INSERT'.
+      CALL SCREEN 0200.
+      CLEAR zspb2203.
+
+    WHEN 'UPDATE'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '수정'
+                             CHANGING zspb2204
+                                      gv_subrc.
+
+      IF zspb2204-pflag IS NOT INITIAL.
+        MESSAGE i000(zmcpb) WITH '수정 불가'.
+        RETURN.
+
+      ENDIF.
+
+      MOVE-CORRESPONDING zspb2204 TO gs_before.
+
+      IF gv_subrc IS INITIAL.
+        CALL SCREEN 0300.
+        CLEAR: zspb2204.
+
+      ENDIF.
+
+    WHEN 'DETAIL'.
+      CLEAR gv_subrc.
+      PERFORM get_select_row USING    '조회'
+                             CHANGING zspb2205
+                                      gv_subrc.
+      IF gv_subrc IS INITIAL.
+        CALL SCREEN 0400.
+        CLEAR: zspb2205.
+
+      ENDIF.
+
+    WHEN 'DELETE'.
+      CLEAR gv_subrc.
+      PERFORM get_delete_row USING    '삭제'
+                             CHANGING  gt_delete
+                                       gv_subrc.
+      IF gv_subrc IS INITIAL.
+        PERFORM delete_list.
+
+      ENDIF.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'INSERT'.
+      PERFORM insert_pernr.
+
+
+    WHEN 'BDC'.
+      CLEAR: gv_subrc.
+      PERFORM get_excel_data CHANGING gv_subrc.
+      IF gv_subrc IS NOT INITIAL.
+        RETURN.
+
+      ENDIF.
+
+      PERFORM bdc.
+      CLEAR gv_file.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'UPDATE'.
+      PERFORM update_pernr.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_DATA_FILE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_data_file INPUT.
+  CALL FUNCTION 'F4_FILENAME'
+    IMPORTING
+      file_name = gv_file.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

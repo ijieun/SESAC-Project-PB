@@ -1,0 +1,372 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB2030O01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'S100'.
+  SET TITLEBAR 'T100' WITH '[PB] 전표 참조문서 조회'(c01).
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       전표 입력 스크린(110) 전표 아이템 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0110 OUTPUT.
+
+  IF go_con IS INITIAL.
+
+    PERFORM create_alv USING    go_con
+                                go_grid
+                                'CON'
+                       CHANGING gs_layo
+                                gt_alv_0100.
+
+    PERFORM set_sort CHANGING gt_sort.
+
+    PERFORM set_fcat_0100 USING    'ZSPB3006'
+                          CHANGING gt_fcat.
+
+    PERFORM display_alv USING    go_grid
+                                 gs_layo
+                        CHANGING gt_alv_0100
+                                 gt_fcat
+                                 gt_sort.
+
+    PERFORM set_alv_0100_defualt.
+
+  ELSE.
+    PERFORM alv_refresh USING go_grid.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0101  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0101 OUTPUT.
+  SET PF-STATUS 'S101'.
+  SET TITLEBAR 'T101' WITH '[PB] 전표 아이템 입력 팝업'(c06).
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0102  OUTPUT
+*&---------------------------------------------------------------------*
+*       송장(IV) 헤더 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0102 OUTPUT.
+
+  IF go_con2 IS INITIAL.
+
+    PERFORM create_alv USING    go_con2
+                                go_grid2
+                                'CON1'
+                       CHANGING gs_layo2
+                                gt_alv_0102.
+
+    PERFORM set_sort2.
+
+    PERFORM set_fcat_0102 USING    'ZSPB3012'
+                          CHANGING gt_fcat2.
+
+    PERFORM display_alv USING    go_grid2
+                                 gs_layo2
+                        CHANGING gt_alv_0102
+                                 gt_fcat2
+                                 gt_sort2.
+  ENDIF.
+
+  PERFORM alv_refresh USING go_grid2.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  MODIFY_SCREEN_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE modify_screen_0100 OUTPUT.
+
+  PERFORM get_bp_data.
+
+  IF gv_subscreenh_no IS INITIAL.
+    gv_subscreenh_no = '102'. " 프로그램 시작 시 초기값 설정 (IV)
+  ENDIF.
+
+  IF gv_subscreeni_no IS INITIAL.
+    gv_subscreeni_no = '103'. " 프로그램 시작 시 초기값 설정 (IV)
+  ENDIF.
+
+  LOOP AT SCREEN.
+
+    IF ts_ref-activetab = 'TAB_IV'.
+
+      IF screen-name = 'TAB_IT_GR' OR screen-name = 'TAB_IT_GI'.
+        screen-invisible = 1.
+      ENDIF.
+
+    ELSEIF ts_ref-activetab = 'TAB_GR'.
+
+      IF screen-name = 'TAB_IT_IV' OR screen-name = 'TAB_IT_GI'.
+        screen-invisible = 1.
+
+      ENDIF.
+
+    ELSEIF ts_ref-activetab = 'TAB_GI'.
+      IF screen-name = 'TAB_IT_IV' OR screen-name = 'TAB_IT_GR'.
+        screen-invisible = 1.
+
+      ENDIF.
+    ENDIF.
+
+    MODIFY SCREEN.
+
+  ENDLOOP.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0103  OUTPUT
+*&---------------------------------------------------------------------*
+*       송장(IV) 아이템 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0103 OUTPUT.
+
+  IF go_con3 IS INITIAL.
+
+    PERFORM create_alv USING    go_con3
+                                go_grid3
+                                'CON2'
+                       CHANGING gs_layo3
+                                gt_alv_0103.
+
+    PERFORM set_sort CHANGING gt_sort3.
+
+    PERFORM set_fcat_0103 USING    'ZSPB2012_1'
+                          CHANGING gt_fcat3.
+
+    PERFORM display_alv USING    go_grid3
+                                 gs_layo3
+                        CHANGING gt_alv_0103
+                                 gt_fcat3
+                                 gt_sort3.
+
+  ELSE.
+    PERFORM alv_refresh USING go_grid3.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0104  OUTPUT
+*&---------------------------------------------------------------------*
+*       입고(GR) 헤더 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0104 OUTPUT.
+
+  IF go_con4 IS INITIAL.
+
+    PERFORM create_alv USING    go_con4
+                                go_grid4
+                                'CON3'
+                       CHANGING gs_layo2
+                                gt_alv_0104.
+
+    PERFORM set_sort4.
+
+    PERFORM set_fcat_0104 USING    'ZSPB3030'
+                          CHANGING gt_fcat4.
+
+    PERFORM display_alv USING    go_grid4
+                                 gs_layo2
+                        CHANGING gt_alv_0104
+                                 gt_fcat4
+                                 gt_sort4.
+  ENDIF.
+
+  PERFORM alv_refresh USING go_grid4.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0105  OUTPUT
+*&---------------------------------------------------------------------*
+*       입고(GR) 아이템 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0105 OUTPUT.
+
+  IF go_con5 IS INITIAL.
+
+    PERFORM create_alv USING    go_con5
+                                go_grid5
+                                'CON4'
+                       CHANGING gs_layo3
+                                gt_alv_0105.
+
+    PERFORM set_sort CHANGING gt_sort5.
+
+    PERFORM set_fcat_0105 USING    'ZSPB3031'
+                          CHANGING gt_fcat5.
+
+    PERFORM display_alv USING    go_grid5
+                                 gs_layo3
+                        CHANGING gt_alv_0105
+                                 gt_fcat5
+                                 gt_sort5.
+
+  ELSE.
+    PERFORM alv_refresh USING go_grid5.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0106  OUTPUT
+*&---------------------------------------------------------------------*
+*       출고(GI) 헤더 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0106 OUTPUT.
+
+  IF go_con6 IS INITIAL.
+
+    PERFORM create_alv USING    go_con6
+                                go_grid6
+                                'CON5'
+                       CHANGING gs_layo2
+                                gt_alv_0106.
+
+    PERFORM set_sort6.
+
+    PERFORM set_fcat_0106 USING    'ZSPB3032'
+                          CHANGING gt_fcat6.
+
+    PERFORM display_alv USING    go_grid6
+                                 gs_layo2
+                        CHANGING gt_alv_0106
+                                 gt_fcat6
+                                 gt_sort6.
+  ENDIF.
+
+  PERFORM alv_refresh USING go_grid6.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_ALV_0107  OUTPUT
+*&---------------------------------------------------------------------*
+*       출고(GI) 아이템 ALV
+*----------------------------------------------------------------------*
+MODULE set_alv_0107 OUTPUT.
+
+  IF go_con7 IS INITIAL.
+
+    PERFORM create_alv USING    go_con7
+                                go_grid7
+                                'CON6'
+                       CHANGING gs_layo3
+                                gt_alv_0107.
+
+    PERFORM set_sort CHANGING gt_sort7.
+
+    PERFORM set_fcat_0107 USING    'ZSPB3033'
+                          CHANGING gt_fcat7.
+
+    PERFORM display_alv USING    go_grid7
+                                 gs_layo3
+                        CHANGING gt_alv_0107
+                                 gt_fcat7
+                                 gt_sort7.
+
+  ELSE.
+    PERFORM alv_refresh USING go_grid7.
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_CURSOR  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_cursor OUTPUT.
+
+  IF gv_subrc = 10.
+    "참조문서타입
+    SET CURSOR FIELD 'ZSPB3005-DTYPE'.
+
+  ENDIF.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0110 OUTPUT.
+  SET PF-STATUS 'S110'.
+  SET TITLEBAR 'T110' WITH '전표 생성'(c19).
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  MODIFY_SCREEN_0110  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE modify_screen_0110 OUTPUT.
+
+*  PERFORM set_alv_0100_defualt.
+
+  LOOP AT SCREEN.
+
+    CASE screen-name.
+      WHEN 'GV_BALANCE'.
+
+        IF gv_balance = 0.
+          screen-intensified = 0.
+        ELSE.
+          screen-intensified = 1.
+        ENDIF.
+
+      WHEN 'T_BA'.
+
+        IF gv_balance = 0.
+          screen-intensified = 0.
+        ELSE.
+          screen-intensified = 1.
+        ENDIF.
+
+      WHEN 'ZSPB3006-PRICE'.
+        zspb3006-price = zspb3008-tprice.
+        zspb3006-waers = 'KRW'.
+
+      WHEN OTHERS.
+    ENDCASE.
+
+    MODIFY SCREEN.
+
+  ENDLOOP.
+
+  PERFORM alv_refresh USING go_grid.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0111  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE status_0111 OUTPUT.
+  SET PF-STATUS 'S111'.
+*  SET TITLEBAR 'xxx'.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  SET_DROPDOWN_VALUES  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE set_dropdown OUTPUT.
+
+  TYPE-POOLS: vrm.
+
+*  PERFORM set_dropdown_dbcrf.
+
+  PERFORM set_dropdown_jtype.
+
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

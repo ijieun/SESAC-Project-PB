@@ -1,0 +1,134 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB2050_TOP                                      Module Pool      SAPMZPB2050
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb2050.
+
+*&---------------------------------------------------------------------*
+" Common
+*&---------------------------------------------------------------------*
+DATA: ok_code   TYPE sy-ucomm,
+      gv_subrc  TYPE sy-subrc,
+      gv_dynnr  TYPE sy-dynnr,
+      gv_close  TYPE sy-subrc,
+      icon_w    TYPE icons-text,
+      icon_r    TYPE icons-text,
+      icon_x    TYPE icons-text,
+      gv_itnum  TYPE zspb5014-itnum,
+      gv_answer TYPE c,
+      gv_pokey  TYPE ztpbpoh-ponum.
+
+*&---------------------------------------------------------------------*
+" BDC Value
+*&---------------------------------------------------------------------*
+DATA: gv_file TYPE rlgrap-filename.
+DATA: gs_bdc TYPE bdcdata,
+      gt_bdc LIKE TABLE OF gs_bdc.
+
+" BDC Excel - Header
+DATA: BEGIN OF gs_pohd,
+        poid  TYPE n LENGTH 5,
+        vendr TYPE ztpbpoh-vendr,
+        creat TYPE ztpbpoh-creat,
+        podat TYPE ztpbpoh-podat,
+        dedat TYPE ztpbpoh-dedat,
+        descr TYPE ztpbpoh-descr,
+      END OF gs_pohd,
+      gt_pohd LIKE TABLE OF gs_pohd.
+
+" BDC Excel - Item
+DATA: BEGIN OF gs_poit,
+        poid  TYPE n LENGTH 5,
+        pronr TYPE ztpbpoi-pronr,
+        lgort TYPE ztpbpoi-lgort,
+        poqty TYPE n LENGTH 5,
+      END OF gs_poit,
+      gt_poit LIKE TABLE OF gs_poit.
+
+*&---------------------------------------------------------------------*
+" ALV
+*&---------------------------------------------------------------------*
+DATA: go_con_head TYPE REF TO cl_gui_custom_container,
+      go_alv_head TYPE REF TO cl_gui_alv_grid.
+DATA: go_con_item TYPE REF TO cl_gui_custom_container,
+      go_alv_item TYPE REF TO cl_gui_alv_grid.
+
+*&---------------------------------------------------------------------*
+" Layout
+*&---------------------------------------------------------------------*
+DATA: gs_layo_head TYPE lvc_s_layo,
+      gt_fcat_head TYPE lvc_t_fcat,
+      gs_fcat_head LIKE LINE OF gt_fcat_head,
+      gt_sort_head TYPE lvc_t_sort,
+      gs_sort_head LIKE LINE OF gt_sort_head.
+DATA: gs_layo_item TYPE lvc_s_layo,
+      gt_fcat_item TYPE lvc_t_fcat,
+      gs_fcat_item LIKE LINE OF gt_fcat_item,
+      gt_sort_item TYPE lvc_t_sort,
+      gs_sort_item LIKE LINE OF gt_sort_item.
+
+*&---------------------------------------------------------------------*
+" TABLES
+*&---------------------------------------------------------------------*
+*Screen 100
+TABLES: zspb5010, zspb5011, zspb5012.
+*Screen 200
+TABLES: zspb5013, zspb5014, zspb5015, zspb5016.
+*Screen 300
+TABLES: zspb5017, zspb5022, zspb5023, zspb5036.
+*Screen 400
+TABLES: zspb5018, zspb5020, zspb5021.
+
+*&---------------------------------------------------------------------*
+" PO 범위
+RANGES:gr_ponum FOR zspb5010-ponum.
+
+" 날짜 검증 로직
+DATA: gr_stdat TYPE ztpbdate.
+
+*&---------------------------------------------------------------------*
+" Header 조회 ALV
+DATA: BEGIN OF gs_list.
+    INCLUDE TYPE zspb5012.
+DATA: it_col TYPE lvc_t_scol,
+      END OF gs_list,
+      gt_list LIKE TABLE OF gs_list.
+
+" Header 조회 Structure
+DATA: gs_head TYPE zspb5017,
+      gt_head LIKE TABLE OF gs_head.
+
+" Item 조회 ALV
+DATA: BEGIN OF gs_item.
+    INCLUDE TYPE zspb5014.
+DATA: it_col TYPE lvc_t_scol,
+      END OF gs_item,
+      gt_item LIKE TABLE OF gs_item.
+
+" Item 생성 ALV
+DATA: gs_creat LIKE gs_item,
+      gt_creat LIKE TABLE OF gs_creat.
+
+" 상품 정보 Structure
+DATA gs_proin TYPE zspb5022.
+
+
+*&---------------------------------------------------------------------*
+" HotSpot Handler
+*&---------------------------------------------------------------------*
+CLASS lcl_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS: handler_hotspot_click
+                  FOR EVENT hotspot_click OF cl_gui_alv_grid
+      IMPORTING e_row_id e_column_id.
+
+    METHODS: handle_hotspot_click_po
+                  FOR EVENT hotspot_click OF cl_gui_alv_grid
+      IMPORTING e_row_id e_column_id es_row_no.
+
+ENDCLASS.
+
+DATA go_handler TYPE REF TO lcl_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

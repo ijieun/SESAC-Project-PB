@@ -1,0 +1,149 @@
+*&---------------------------------------------------------------------*
+*&  Include           MZPB1040I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0100 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN 'SEARCH'.
+      PERFORM get_alv_list.
+
+    WHEN 'ENTER'.
+      CLEAR zspb4001-gtype_t.
+      PERFORM get_gtype_t USING zspb4001-gtype "사용할 값 (변화x)
+                          CHANGING zspb4001-gtype_t.
+
+    WHEN 'GINSERT'.
+      IF sy-subrc = 0.
+        CLEAR:zspb4002-glacc, zspb4002-gname, zspb4002-gtype, zspb4002-gtype_t, gv_file.
+        CALL SCREEN 0200.
+      ENDIF.
+      CLEAR:zspb4002-glacc, zspb4002-gname, zspb4002-gtype, zspb4002-gtype_t, gv_file.
+
+    WHEN 'GUPDATE'.
+      PERFORM get_new_glacc.
+      IF sy-subrc = 0.
+        CLEAR:zspb4003-ngname.
+        zspb4003-ngname  = zspb4003-gname.
+        CALL SCREEN 0300.
+      ENDIF.
+      CLEAR:zspb4003-ngname.
+
+    WHEN 'GDETAIL'.
+      PERFORM get_detail.
+      IF sy-subrc = 0.
+        CALL SCREEN 0400.
+      ENDIF.
+
+    WHEN OTHERS.
+
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  EXIT  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE exit INPUT.
+
+  CASE ok_code.
+    WHEN 'EXIT'.
+      LEAVE PROGRAM.
+
+    WHEN 'CANC'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0200 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 100.
+
+    WHEN 'ENTER'.
+      PERFORM get_gtype_t USING zspb4002-gtype
+                          CHANGING zspb4002-gtype_t.
+
+    WHEN 'NGINSERT'.
+      PERFORM get_nglacc.
+
+    WHEN 'BDC'.
+
+      " 엑셀 업로드 파일
+      PERFORM get_excel_data.
+      " BDC 실행
+      PERFORM bdc_execute.
+      PERFORM get_alv_list.
+
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0300 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 100.
+
+    WHEN 'ENTER'.
+      PERFORM get_gtype_t USING zspb4003-ngtype
+                        CHANGING zspb4003-ngtype_t.
+
+    WHEN 'NGUPDATE'.
+      PERFORM change_glacc.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0400  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_0400 INPUT.
+
+  CASE ok_code.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 0.
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  F4_DATA_FILE  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE f4_data_file INPUT.
+  CALL FUNCTION 'F4_FILENAME'
+    IMPORTING
+      file_name = gv_file.
+ENDMODULE.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

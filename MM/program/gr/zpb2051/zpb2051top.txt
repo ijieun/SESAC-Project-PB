@@ -1,0 +1,57 @@
+*&---------------------------------------------------------------------*
+*& Include ZPB2051TOP                                        Report ZPB2051
+*&
+*&---------------------------------------------------------------------*
+REPORT zpb2051.
+*&---------------------------------------------------------------------*
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc.
+
+*&---------------------------------------------------------------------*
+" Tables 정의
+TABLES: ztpbproduct,
+        ztpbproduct_t,
+        ztpbvendor,
+        ztpbpoh,
+        ztpbgrh,
+        ztpbgih.
+
+*&---------------------------------------------------------------------*
+" ALV 스트럭쳐
+DATA: BEGIN OF gs_data.
+    INCLUDE TYPE zspb5100.
+DATA: it_col TYPE lvc_t_scol,
+      END OF gs_data,
+      gt_data LIKE TABLE OF gs_data.
+DATA: gs_col TYPE lvc_s_scol.
+
+*&---------------------------------------------------------------------*
+" Data
+DATA: gt_inv    LIKE TABLE OF ztpbinvh,
+      gt_gr     LIKE TABLE OF ztpbgrh,
+      gt_gi     LIKE TABLE OF ztpbgih,
+      gt_po     LIKE TABLE OF ztpbpoh,
+      gt_so     LIKE TABLE OF ztpbsoh,
+      gt_vendor LIKE TABLE OF ztpbvendor,
+      gt_custom LIKE TABLE OF ztpbcustom,
+      gv_pa     TYPE c LENGTH 1.
+
+
+DATA: BEGIN OF gs_pronr,
+        ponum TYPE ztpbpoh-ponum,
+      END OF gs_pronr,
+      gt_pronr LIKE TABLE OF gs_pronr.
+
+*&---------------------------------------------------------------------*
+" ALV 정의
+DATA: go_dock TYPE REF TO cl_gui_docking_container,
+      go_grid TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat TYPE lvc_s_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort TYPE lvc_s_sort.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750

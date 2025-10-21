@@ -1,0 +1,100 @@
+*&---------------------------------------------------------------------*
+*& Include MZPB4010TOP                                       Module Pool      SAPMZPB4010
+*&
+*&---------------------------------------------------------------------*
+PROGRAM sapmzpb4010.
+
+" Common
+DATA: ok_code  LIKE sy-ucomm,
+      gv_subrc LIKE sy-subrc,
+      gv_dynnr TYPE sy-dynnr,
+      icon_o   TYPE icons-text,
+      icon_c   TYPE icons-text,
+      icon_d   TYPE icons-text,
+      icon_p   TYPE icons-text.
+
+" SO header 조회
+DATA: gt_data TYPE TABLE OF zspb1006,
+      gs_data LIKE LINE OF gt_data.
+
+DATA: gv_sokey TYPE ztpbsoh-sonum. "출고 오더키
+DATA: gv_gikey TYPE ztpbsoh-sonum. "출고키
+
+DATA: gs_temp TYPE zspb1023,
+      gt_temp LIKE TABLE OF gs_temp.
+
+" 출고 조회
+DATA: gs_gih TYPE zspb1017,
+      gt_gih LIKE TABLE OF gs_gih.
+DATA: gs_gii TYPE zspb1018,
+      gt_gii LIKE TABLE OF gs_gii.
+
+
+" Condition
+TABLES zspb1004."판매오더 헤더 검색
+" Info
+TABLES zspb1016. "안내
+TABLES zspb1017. "출고 헤더 상세정보
+TABLES zspb1008.
+TABLES zspb1003.
+TABLES zspb1022. "출고 헤더 생성 정보
+
+
+
+* Domain Fixed Value
+DATA: gt_domain TYPE TABLE OF dd07v,
+      gs_domain LIKE LINE OF gt_domain.
+
+
+" ALV Components
+DATA: go_con  TYPE REF TO cl_gui_custom_container,
+      go_alv  TYPE REF TO cl_gui_alv_grid,
+      gs_layo TYPE lvc_s_layo,
+      gt_fcat TYPE lvc_t_fcat,
+      gs_fcat LIKE LINE OF gt_fcat,
+      gt_sort TYPE lvc_t_sort,
+      gs_sort LIKE LINE OF gt_sort.
+
+" ALV Components - 출고 Header
+DATA: go_con_gih  TYPE REF TO cl_gui_custom_container,
+      go_alv_gih  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_gih TYPE lvc_s_layo,
+      gt_fcat_gih TYPE lvc_t_fcat,
+      gs_fcat_gih LIKE LINE OF gt_fcat_gih,
+      gt_sort_gih TYPE lvc_t_sort,
+      gs_sort_gih LIKE LINE OF gt_sort_gih.
+
+" ALV Components - 출고 Item
+DATA: go_con_gii  TYPE REF TO cl_gui_custom_container,
+      go_alv_gii  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_gii TYPE lvc_s_layo,
+      gt_fcat_gii TYPE lvc_t_fcat,
+      gs_fcat_gii LIKE LINE OF gt_fcat_gii,
+      gt_sort_gii TYPE lvc_t_sort,
+      gs_sort_gii LIKE LINE OF gt_sort_gii.
+
+" ALV Components - SO Item
+DATA: go_con_soi  TYPE REF TO cl_gui_custom_container,
+      go_alv_soi  TYPE REF TO cl_gui_alv_grid,
+      gs_layo_soi TYPE lvc_s_layo,
+      gt_fcat_soi TYPE lvc_t_fcat,
+      gs_fcat_soi LIKE LINE OF gt_fcat_soi,
+      gt_sort_soi TYPE lvc_t_sort,
+      gs_sort_soi LIKE LINE OF gt_sort_soi.
+
+
+" Tab Strip
+CONTROLS mytab TYPE TABSTRIP.
+
+" Handler
+CLASS lcl_handler DEFINITION.
+  PUBLIC SECTION.
+    METHODS: on_double_click FOR EVENT double_click OF cl_gui_alv_grid
+      IMPORTING es_row_no,
+      handler_hotspot_click FOR EVENT hotspot_click OF cl_gui_alv_grid
+        IMPORTING e_row_id  e_column_id es_row_no.
+ENDCLASS.
+DATA go_handler TYPE REF TO lcl_handler.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.5.5 - E.G.Mellodew. 1998-2025. Sap Release 750
