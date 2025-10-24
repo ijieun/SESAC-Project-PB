@@ -40,6 +40,20 @@
 
 >  [PO & PO Approval & GR Demo](https://drive.google.com/drive/folders/1y8UHAi1-6cTIWlsWPiLzIe7yebxeMFV7?usp=sharing)
 
+### 시연 캡처 화면
+#### 구매오더 조회 및 생성
+<img width="1474" height="1243" alt="PO조회생성" src="https://github.com/user-attachments/assets/55113f67-bee6-49c9-b6a7-0bb39a44bccf" />
+
+#### 구매오더 변경 및 상세조회
+<img width="1404" height="1233" alt="PO변경조회" src="https://github.com/user-attachments/assets/83d88e7f-6961-411a-85e2-e9168522cbfa" />
+
+#### 구매오더 승인 및 반려
+<img width="1465" height="1240" alt="PO승인반려" src="https://github.com/user-attachments/assets/77d2107d-40e9-4f99-bd66-9bb673d83be5" />
+
+#### 입고
+<img width="1480" height="1239" alt="입고" src="https://github.com/user-attachments/assets/03127528-58b0-4e32-ae8a-81747ccf41f3" />
+
+
 
 ## 💬 기술 스택
 
